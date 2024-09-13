@@ -170,4 +170,3 @@ button_back_to_login.pack(pady=10)
 
 # Start the main event loop
 root.mainloop()
-
