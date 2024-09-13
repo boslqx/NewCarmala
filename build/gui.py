@@ -21,12 +21,12 @@ def relative_to_assets(path: str) -> Path:
 window = Tk()
 
 window.geometry("900x500")
-window.configure(bg = "#DE7272")
+window.configure(bg = "#F7F6EF")
 
 
 canvas = Canvas(
     window,
-    bg = "#DE7272",
+    bg = "#F7F6EF",
     height = 500,
     width = 900,
     bd = 0,
@@ -35,97 +35,90 @@ canvas = Canvas(
 )
 
 canvas.place(x = 0, y = 0)
+canvas.create_rectangle(
+    554.0,
+    0.0,
+    900.0,
+    500.0,
+    fill="#D9D9D9",
+    outline="")
+
 canvas.create_text(
-    289.0,
-    42.0,
+    407.0,
+    268.0,
     anchor="nw",
-    text="Registration Form",
+    text="Forgot password?",
     fill="#000000",
-    font=("InknutAntiqua Regular", 32 * -1)
+    font=("Amarante Regular", 12 * -1)
 )
 
 canvas.create_text(
-    177.0,
-    155.0,
+    170.0,
+    426.0,
+    anchor="nw",
+    text="Don’t have an account? Register now",
+    fill="#000000",
+    font=("Inter", 12 * -1)
+)
+
+canvas.create_text(
+    66.0,
+    147.0,
     anchor="nw",
     text="Username:",
-    fill="#FFFFFF",
-    font=("Itim Regular", 16 * -1)
+    fill="#000000",
+    font=("Amarante Regular", 16 * -1)
 )
 
-canvas.create_text(
-    177.0,
-    212.0,
-    anchor="nw",
-    text="Email:",
-    fill="#FFFFFF",
-    font=("Itim Regular", 16 * -1)
-)
+canvas.create_rectangle(
+    56.0,
+    127.0,
+    509.0,
+    182.0,
+    fill="#D9D9D9",
+    outline="")
 
 canvas.create_text(
-    177.0,
-    269.0,
+    66.0,
+    225.0,
     anchor="nw",
     text="Password:",
-    fill="#FFFFFF",
-    font=("Itim Regular", 16 * -1)
+    fill="#000000",
+    font=("Amarante Regular", 16 * -1)
+)
+
+canvas.create_rectangle(
+    56.0,
+    206.0,
+    509.0,
+    260.0,
+    fill="#000000",
+    outline="")
+
+canvas.create_rectangle(
+    196.0,
+    284.0,
+    341.0,
+    338.0,
+    fill="#000000",
+    outline="")
+
+canvas.create_text(
+    102.0,
+    68.0,
+    anchor="nw",
+    text="Account Login",
+    fill="#000000",
+    font=("EngraversMT", 32 * -1)
 )
 
 canvas.create_text(
-    177.0,
-    326.0,
+    242.0,
+    298.0,
     anchor="nw",
-    text="Confirm Password:",
-    fill="#FFFFFF",
-    font=("Itim Regular", 16 * -1)
+    text="Log in",
+    fill="#000000",
+    font=("Amarante Regular", 20 * -1)
 )
-
-canvas.create_rectangle(
-    268.0,
-    153.0,
-    632.0,
-    188.0,
-    fill="#D9D9D9",
-    outline="")
-
-canvas.create_rectangle(
-    315.0,
-    313.0,
-    679.0,
-    348.0,
-    fill="#D9D9D9",
-    outline="")
-
-canvas.create_rectangle(
-    268.0,
-    153.0,
-    632.0,
-    188.0,
-    fill="#D9D9D9",
-    outline="")
-
-canvas.create_rectangle(
-    268.0,
-    153.0,
-    632.0,
-    188.0,
-    fill="#D9D9D9",
-    outline="")
-
-canvas.create_rectangle(
-    268.0,
-    261.0,
-    632.0,
-    296.0,
-    fill="#D9D9D9",
-    outline="")
-
-canvas.create_rectangle(
-    268.0,
-    205.0,
-    632.0,
-    240.0,
-    fill="#D9D9D9",
-    outline="")
 window.resizable(False, False)
 window.mainloop()
