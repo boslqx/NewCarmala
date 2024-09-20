@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 from PIL import ImageTk, Image
 from tkinter import messagebox
+import os
 
 # Functionality for the Search button
 def search_action():
@@ -14,6 +15,11 @@ def search_action():
         messagebox.showwarning("Input Error", "Please fill all the fields.")
     else:
         print(f"Location: {location}, Pickup Date: {pickup_date}, Return Date: {return_date}")
+
+# Function to open the login script when the "Sign In" tab is clicked
+def open_login():
+    login_script_path = r"/mnt/data/Login.py"  # Path to the Login.py file
+    os.system(f'python "{login_script_path}"')  # Execute the login script
 
 # Create main application window
 root = tk.Tk()
@@ -29,14 +35,14 @@ home_tab = ttk.Frame(notebook)
 tab2 = ttk.Frame(notebook)
 tab3 = ttk.Frame(notebook)
 tab4 = ttk.Frame(notebook)
-tab5 = ttk.Frame(notebook)
+sign_in_tab = ttk.Frame(notebook)
 
 # Add the tabs
 notebook.add(home_tab, text='Home')  # New Home tab
 notebook.add(tab2, text='Become a Renter')
 notebook.add(tab3, text='Rental Deals')
 notebook.add(tab4, text='How It Works')
-notebook.add(tab5, text='Sign In')
+notebook.add(sign_in_tab, text='Sign In')  # Sign In tab
 
 # Load and set the background image in the Home tab
 background_image_path = r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-09-20 133601.png"  # Your background image path
@@ -80,6 +86,15 @@ canvas.create_window(850, 600, anchor="nw", window=return_date_entry)
 # Create the search button
 search_button = ttk.Button(home_tab, text="Search", command=search_action)
 canvas.create_window(1070, 600, anchor="nw", window=search_button)
+
+# Bind the event when "Sign In" tab is clicked
+def on_tab_changed(event):
+    selected_tab = event.widget.tab(event.widget.index("current"))["text"]
+    if selected_tab == "Sign In":
+        open_login()
+
+# Bind the event to the notebook
+notebook.bind("<<NotebookTabChanged>>", on_tab_changed)
 
 # Start the Tkinter event loop
 root.mainloop()

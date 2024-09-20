@@ -17,7 +17,7 @@ def open_registration_frame():
     # Hide the login frame
     login_frame.pack_forget()
 
-    # Show the registration frame
+# Show the registration frame
     registration_frame.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
 
 
@@ -39,10 +39,8 @@ def register_user():
         registration_frame.pack_forget()
         login_frame.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
 
-
 def forgot_password():
     messagebox.showinfo("Forgot Password", "Redirecting to password recovery...")
-
 
 def add_placeholder(entry, placeholder_text):
     entry.insert(0, placeholder_text)
@@ -61,7 +59,6 @@ def restore_placeholder(event, placeholder_text):
     if not event.widget.get():
         event.widget.insert(0, placeholder_text)
         event.widget.configure(fg='grey')
-
 
 # Create the main window
 root = tk.Tk()
@@ -111,8 +108,7 @@ label_forgot_password = tk.Label(login_frame, text="Forgot password?", fg="blue"
 label_forgot_password.pack(side=tk.LEFT, padx=(10, 0), anchor='s')
 label_forgot_password.bind("<Button-1>", lambda e: forgot_password())
 
-label_register = tk.Label(login_frame, text="Don’t have an account? Register now", fg="blue", cursor="hand2",
-                          bg='#f8f4e3')
+label_register = tk.Label(login_frame, text="Don’t have an account? Register now", fg="blue", cursor="hand2",bg='#f8f4e3')
 label_register.pack(side=tk.RIGHT, padx=(0, 10), anchor='s')
 label_register.bind("<Button-1>", lambda e: open_registration_frame())
 
@@ -142,8 +138,7 @@ entry_reg_password = tk.Entry(registration_frame, show="")
 entry_reg_password.pack(pady=5)
 
 # Password requirements note
-label_password_note = tk.Label(registration_frame, text="Minimum 8 characters, no special characters", fg="grey",
-                               bg='#f8f4e3')
+label_password_note = tk.Label(registration_frame, text="Minimum 8 characters, no special characters", fg="grey", bg='#f8f4e3')
 label_password_note.pack()
 
 # Confirm Password field
@@ -153,8 +148,7 @@ entry_confirm_password = tk.Entry(registration_frame, show="")
 entry_confirm_password.pack(pady=5)
 
 # Confirm Password matching note
-label_confirm_password_note = tk.Label(registration_frame, text="Password should be the same as above", fg="grey",
-                                       bg='#f8f4e3')
+label_confirm_password_note = tk.Label(registration_frame, text="Password should be the same as above", fg="grey", bg='#f8f4e3')
 label_confirm_password_note.pack()
 
 # Register button
@@ -163,10 +157,9 @@ button_register.pack(pady=20)
 
 # Back to login button
 button_back_to_login = tk.Button(registration_frame, text="Back to Login",
-                                 command=lambda: [registration_frame.pack_forget(),
-                                                  login_frame.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)],
-                                 bg="#f5f2d0")
+command=lambda: [registration_frame.pack_forget(), login_frame.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)], bg="#f5f2d0")
 button_back_to_login.pack(pady=10)
 
 # Start the main event loop
 root.mainloop()
+
