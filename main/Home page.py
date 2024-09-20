@@ -25,62 +25,61 @@ notebook = ttk.Notebook(root)
 notebook.pack(fill='both', expand=True)  # Make the notebook fill the entire window
 
 # Create frames for each tab
-tab1 = ttk.Frame(notebook)
+home_tab = ttk.Frame(notebook)
 tab2 = ttk.Frame(notebook)
 tab3 = ttk.Frame(notebook)
 tab4 = ttk.Frame(notebook)
 tab5 = ttk.Frame(notebook)
 
 # Add the tabs
-notebook.add(tab1, text='Become a Renter')
-notebook.add(tab2, text='Rental Deals')
-notebook.add(tab3, text='How It Works')
-notebook.add(tab4, text='Why Choose Us')
+notebook.add(home_tab, text='Home')  # New Home tab
+notebook.add(tab2, text='Become a Renter')
+notebook.add(tab3, text='Rental Deals')
+notebook.add(tab4, text='How It Works')
 notebook.add(tab5, text='Sign In')
 
-# Load and set the background image in the main tab (tab1)
+# Load and set the background image in the Home tab
 background_image_path = r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-09-20 133601.png"  # Your background image path
 bg_image = Image.open(background_image_path)
 bg_image = bg_image.resize((1200, 700), Image.LANCZOS)  # Resize to fit the window using LANCZOS filter
 bg_photo = ImageTk.PhotoImage(bg_image)
 
-# Create a canvas to hold the background and other widgets
-canvas = tk.Canvas(tab1, width=1200, height=700)
+# Create a canvas to hold the background and other widgets in the Home tab
+canvas = tk.Canvas(home_tab, width=1200, height=700)
 canvas.pack(fill='both', expand=True)
 
 # Add the background image to the canvas
 canvas.create_image(0, 0, image=bg_photo, anchor="nw")
 
 # Create the 'Find, Book, and Rent a Car' label (at the top)
-title_label = tk.Label(tab1, text="Find, book and rent a car Easily", font=("Helvetica", 30, "bold"), bg="white", fg="black")
+title_label = tk.Label(home_tab, text="Find, book and rent a car Easily", font=("Helvetica", 30, "bold"), bg="white", fg="black")
 canvas.create_window(50, 120, anchor="nw", window=title_label)
 
-subtitle_label = tk.Label(tab1, text="Get a car wherever and whenever you need it with your iOS and Android device.", font=("Helvetica", 14), bg="white", fg="black")
+subtitle_label = tk.Label(home_tab, text="Get a car wherever and whenever you need it with your iOS and Android device.", font=("Helvetica", 14), bg="white", fg="black")
 canvas.create_window(50, 180, anchor="nw", window=subtitle_label)
 
 # Create input fields and labels for Location, Pickup Date, and Return Date at the bottom of the page
-location_label = tk.Label(tab1, text="Location", font=("Helvetica", 12), bg="white")
+location_label = tk.Label(home_tab, text="Location", font=("Helvetica", 12), bg="white")
 canvas.create_window(150, 600, anchor="nw", window=location_label)
 
-location_entry = tk.Entry(tab1, font=("Helvetica", 12), width=20)
+location_entry = tk.Entry(home_tab, font=("Helvetica", 12), width=20)
 canvas.create_window(230, 600, anchor="nw", window=location_entry)
 
-pickup_label = tk.Label(tab1, text="Pickup date", font=("Helvetica", 12), bg="white")
+pickup_label = tk.Label(home_tab, text="Pickup date", font=("Helvetica", 12), bg="white")
 canvas.create_window(450, 600, anchor="nw", window=pickup_label)
 
-pickup_date_entry = tk.Entry(tab1, font=("Helvetica", 12), width=20)
+pickup_date_entry = tk.Entry(home_tab, font=("Helvetica", 12), width=20)
 canvas.create_window(540, 600, anchor="nw", window=pickup_date_entry)
 
-return_label = tk.Label(tab1, text="Return date", font=("Helvetica", 12), bg="white")
+return_label = tk.Label(home_tab, text="Return date", font=("Helvetica", 12), bg="white")
 canvas.create_window(760, 600, anchor="nw", window=return_label)
 
-return_date_entry = tk.Entry(tab1, font=("Helvetica", 12), width=20)
+return_date_entry = tk.Entry(home_tab, font=("Helvetica", 12), width=20)
 canvas.create_window(850, 600, anchor="nw", window=return_date_entry)
 
 # Create the search button
-search_button = ttk.Button(tab1, text="Search", command=search_action)
+search_button = ttk.Button(home_tab, text="Search", command=search_action)
 canvas.create_window(1070, 600, anchor="nw", window=search_button)
 
 # Start the Tkinter event loop
 root.mainloop()
-
