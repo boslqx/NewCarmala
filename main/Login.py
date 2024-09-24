@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox
+from PIL import Image, ImageTk
 
 
 def login():
@@ -73,9 +74,13 @@ main_frame.pack(fill=tk.BOTH, expand=True)
 login_frame = tk.Frame(main_frame, bg='#f8f4e3')
 login_frame.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
 
-# Create a frame for the green section on the right
-green_frame = tk.Frame(main_frame, bg='#c6e2c6', width=400)
-green_frame.pack(fill=tk.Y, side=tk.RIGHT)
+# Insert and load picture
+image = Image.open(r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-09-24 200101.png")
+image = ImageTk.PhotoImage(image)
+
+# Create a label to display the image
+image_label = tk.Label(root, image=image)
+image_label.pack(side = tk.RIGHT)
 
 # Create the title label in the login frame
 label_title = tk.Label(login_frame, text="ACCOUNT LOGIN", font=("Times New Roman", 24, "bold"), bg='#f8f4e3')

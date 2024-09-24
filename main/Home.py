@@ -40,7 +40,6 @@ sign_in_tab = ttk.Frame(notebook)
 # Add the tabs
 notebook.add(home_tab, text='Home')  # New Home tab
 notebook.add(tab2, text='Become a Renter')
-notebook.add(tab3, text='Rental Deals')
 notebook.add(tab4, text='How It Works')
 notebook.add(sign_in_tab, text='Sign In')  # Sign In tab
 
@@ -56,13 +55,6 @@ canvas.pack(fill='both', expand=True)
 
 # Add the background image to the canvas
 canvas.create_image(0, 0, image=bg_photo, anchor="nw")
-
-# Create the 'Find, Book, and Rent a Car' label (at the top)
-title_label = tk.Label(home_tab, text="Find, book and rent a car Easily", font=("Helvetica", 30, "bold"), bg="white", fg="black")
-canvas.create_window(50, 120, anchor="nw", window=title_label)
-
-subtitle_label = tk.Label(home_tab, text="Get a car wherever and whenever you need it with your iOS and Android device.", font=("Helvetica", 14), bg="white", fg="black")
-canvas.create_window(50, 180, anchor="nw", window=subtitle_label)
 
 # Create input fields and labels for Location, Pickup Date, and Return Date at the bottom of the page
 location_label = tk.Label(home_tab, text="Location", font=("Helvetica", 12), bg="white")
