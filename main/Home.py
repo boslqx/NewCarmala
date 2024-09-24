@@ -17,8 +17,8 @@ def search_action():
         print(f"Location: {location}, Pickup Date: {pickup_date}, Return Date: {return_date}")
 
 # Function to open the login script when the "Sign In" tab is clicked
-def open_login():
-    login_script_path = r"/mnt/data/Login.py"  # Path to the Login.py file
+def open_signin():
+    login_script_path = r"C:\Users\User\OneDrive - student.newinti.edu.my\Carmala\main\Login.py"  # Path to the Login.py file
     os.system(f'python "{login_script_path}"')  # Execute the login script
 
 # Create main application window
@@ -83,7 +83,7 @@ canvas.create_window(1070, 600, anchor="nw", window=search_button)
 def on_tab_changed(event):
     selected_tab = event.widget.tab(event.widget.index("current"))["text"]
     if selected_tab == "Sign In":
-        open_login()
+        open_signin()
 
 # Bind the event to the notebook
 notebook.bind("<<NotebookTabChanged>>", on_tab_changed)
