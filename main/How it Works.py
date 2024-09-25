@@ -6,7 +6,7 @@ from PIL import Image, ImageTk
 # Create the main window
 root = tk.Tk()
 root.title("Account Login Page")
-root.state('zoomed')  # Set window to full screen
+root.geometry('1280x780')
 
 # Add a Notebook for tabs
 notebook = ttk.Notebook(root)
@@ -25,6 +25,13 @@ notebook.add(tab2, text='Become a Renter')
 notebook.add(tab4, text='How It Works')
 notebook.add(sign_in_tab, text='Sign In')  # Sign In tab
 
+# Create a main frame for the layout
+main_frame = tk.Frame(root)
+main_frame.pack(fill=tk.BOTH, expand=True)
+
+# Create first frame
+first_frame = tk.Frame(main_frame, bg='#F1F1F1')
+first_frame.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
 
 # Insert and load picture
 image = Image.open(r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-09-24 210757.png")
@@ -34,26 +41,6 @@ image = ImageTk.PhotoImage(image)
 image_label = tk.Label(root, image=image)
 image_label.pack(fill='both', expand=True)
 
-# Create a canvas
-canvas = tk.Canvas(root)
-canvas.pack(side="left", fill="both", expand=True)
-
-# Create a vertical scrollbar linked to the canvas
-scrollbar = tk.Scrollbar(root, orient="vertical", command=canvas.yview)
-scrollbar.pack(side="right", fill="y")
-
-# Configure the canvas to use the scrollbar
-canvas.configure(yscrollcommand=scrollbar.set)
-
-# Create another frame inside the canvas to hold scrollable content
-scroll_frame = tk.Frame(canvas)
-
-# Add this frame to the canvas
-canvas.create_window((0, 0), window=scroll_frame, anchor="nw")
-
-# Populate the scroll_frame with some widgets (e.g., buttons)
-for i in range(50):
-    tk.Label(scroll_frame, text=f"Label {i+1}").pack()
 
 # Start the main event loop
 root.mainloop()
