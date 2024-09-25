@@ -80,13 +80,6 @@ root = tk.Tk()
 root.title("Account Login Page")
 root.geometry('1280x780')
 
-# Create a main frame for the layout
-main_frame = tk.Frame(root)
-main_frame.pack(fill=tk.BOTH, expand=True)
-
-# Create a frame for the login page
-login_frame = tk.Frame(main_frame, bg='#F1F1F1')
-login_frame.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
 
 # Create a frame for image on the right
 right_frame = tk.Frame(main_frame, bg='#F1F1F1', width=400)
