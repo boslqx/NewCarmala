@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
+from tkcalendar import DateEntry  # Import DateEntry from tkcalendar
 from PIL import ImageTk, Image
 from tkinter import messagebox
 import os
@@ -66,13 +67,15 @@ canvas.create_window(230, 600, anchor="nw", window=location_entry)
 pickup_label = tk.Label(home_tab, text="Pickup date", font=("Helvetica", 12), bg="white")
 canvas.create_window(450, 600, anchor="nw", window=pickup_label)
 
-pickup_date_entry = tk.Entry(home_tab, font=("Helvetica", 12), width=20)
+# Replace the text entry with a calendar date picker (DateEntry)
+pickup_date_entry = DateEntry(home_tab, font=("Helvetica", 12), width=18, background='darkblue', foreground='white', borderwidth=2)
 canvas.create_window(540, 600, anchor="nw", window=pickup_date_entry)
 
 return_label = tk.Label(home_tab, text="Return date", font=("Helvetica", 12), bg="white")
 canvas.create_window(760, 600, anchor="nw", window=return_label)
 
-return_date_entry = tk.Entry(home_tab, font=("Helvetica", 12), width=20)
+# Replace the text entry with a calendar date picker (DateEntry)
+return_date_entry = DateEntry(home_tab, font=("Helvetica", 12), width=18, background='darkblue', foreground='white', borderwidth=2)
 canvas.create_window(850, 600, anchor="nw", window=return_date_entry)
 
 # Create the search button
@@ -90,3 +93,5 @@ notebook.bind("<<NotebookTabChanged>>", on_tab_changed)
 
 # Start the Tkinter event loop
 root.mainloop()
+
+
