@@ -35,12 +35,13 @@ image_paths = [
 ]
 
 loaded_images = []
+labels = []  # Store image labels for future reference
 
 # Set each image to fill the window size (1280x780)
 window_width = 1280
 window_height = 780
 
-for image_path in image_paths:
+for idx, image_path in enumerate(image_paths):
     img = Image.open(image_path)
     img = img.resize((window_width, window_height))  # Resize image to fill the window
     img_tk = ImageTk.PhotoImage(img)
@@ -48,9 +49,20 @@ for image_path in image_paths:
 
     label = tk.Label(image_frame, image=img_tk)
     label.pack()  # Pack each image to be visible one at a time with scrolling
+    labels.append(label)  # Store label references
 
-# Create a button for get started
-getstarted =tk.Button(root, text = "Get Started", bg="blue",fg="white",font=("Poppins", 18))
-getstarted.pack()
+
+# Add the "Get Started" button inside the last image
+def on_get_started():
+    print("Get Started button clicked!")
+
+
+# Create the "Get Started" button
+get_started_btn = tk.Button(labels[-1],bg ="#1572D3",fg = "white",text="Get Started", font=("Poppins", 16),command=on_get_started, width=21, height=2)
+
+
+# Place the button at the bottom center of the last image
+get_started_btn.place(relx=0.5, rely=0.9, anchor=tk.CENTER)
+
 # Start the main loop
 root.mainloop()

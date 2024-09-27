@@ -1,46 +1,68 @@
 import tkinter as tk
-from tkinter import ttk
-from tkinter import messagebox
+from tkinter import Scrollbar, Canvas
 from PIL import Image, ImageTk
 
-# Create the main window
+# Create a window with a specific geometry
 root = tk.Tk()
-root.title("Account Login Page")
-root.geometry('1280x780')
+root.title("Image Viewer with Scrollbar")
+root.geometry("1280x780")  # Set window size to 1280x780
 
-# Add a Notebook for tabs
-notebook = ttk.Notebook(root)
-notebook.pack(fill='both', expand=True)  # Make the notebook fill the entire window
+# Set up a frame for the canvas and scrollbar
+frame = tk.Frame(root)
+frame.pack(fill=tk.BOTH, expand=True)
 
-# Create frames for each tab
-home_tab = ttk.Frame(notebook)
-tab2 = ttk.Frame(notebook)
-tab3 = ttk.Frame(notebook)
-tab4 = ttk.Frame(notebook)
-sign_in_tab = ttk.Frame(notebook)
+# Create a canvas
+canvas = Canvas(frame)
+canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-# Add the tabs
-notebook.add(home_tab, text='Home')  # New Home tab
-notebook.add(tab2, text='Become a Renter')
-notebook.add(tab4, text='How It Works')
-notebook.add(sign_in_tab, text='Sign In')  # Sign In tab
+# Add a scrollbar
+scrollbar = Scrollbar(frame, orient=tk.VERTICAL, command=canvas.yview)
+scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-# Create a main frame for the layout
-main_frame = tk.Frame(root)
-main_frame.pack(fill=tk.BOTH, expand=True)
+# Configure canvas scrolling
+canvas.configure(yscrollcommand=scrollbar.set)
+canvas.bind('<Configure>', lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
 
-# Create first frame
-first_frame = tk.Frame(main_frame, bg='#F1F1F1')
-first_frame.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
+# Create another frame inside the canvas to hold the images
+image_frame = tk.Frame(canvas)
+canvas.create_window((0, 0), window=image_frame, anchor="nw")
 
-# Insert and load picture
-image = Image.open(r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-09-24 210757.png")
-image = ImageTk.PhotoImage(image)
+# Load the images
+image_paths = [
+    r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-09-27 103340.png",
+    r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-09-27 103615.png",
+    r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-09-27 103735.png"
+]
 
-# Create a label to display the image
-image_label = tk.Label(root, image=image)
-image_label.pack(fill='both', expand=True)
+loaded_images = []
+labels = []  # Store image labels for future reference
+
+# Set each image to fill the window size (1280x780)
+window_width = 1280
+window_height = 780
+
+for idx, image_path in enumerate(image_paths):
+    img = Image.open(image_path)
+    img = img.resize((window_width, window_height))  # Resize image to fill the window
+    img_tk = ImageTk.PhotoImage(img)
+    loaded_images.append(img_tk)
+
+    label = tk.Label(image_frame, image=img_tk)
+    label.pack()  # Pack each image to be visible one at a time with scrolling
+    labels.append(label)  # Store label references
 
 
-# Start the main event loop
+# Add the "Get Started" button inside the last image
+def on_get_started():
+    print("Get Started button clicked!")
+
+
+# Create the "Get Started" button
+get_started_btn = tk.Button(labels[-1],bg ="#1572D3",fg = "white",text="Get Started", font=("Poppins", 16),command=on_get_started, width=21, height=2)
+
+
+# Place the button at the bottom center of the last image
+get_started_btn.place(relx=0.5, rely=0.9, anchor=tk.CENTER)
+
+# Start the main loop
 root.mainloop()

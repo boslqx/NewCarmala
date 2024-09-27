@@ -58,7 +58,8 @@ def on_get_started():
 
 
 # Create the "Get Started" button
-get_started_btn = tk.Button(labels[-1],bg ="#1572D3",fg = "white",text="Get Started", font=("Poppins", 16),command=on_get_started)
+get_started_btn = tk.Button(labels[-1],bg ="#1572D3",fg = "white",text="Get Started", font=("Poppins", 16),command=on_get_started, width=21, height=2)
+
 
 # Place the button at the bottom center of the last image
 get_started_btn.place(relx=0.5, rely=0.9, anchor=tk.CENTER)
