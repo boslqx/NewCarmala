@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
+from tkinter import Scrollbar, Canvas
 from tkcalendar import DateEntry  # Import DateEntry from tkcalendar
 from PIL import ImageTk, Image
 from tkinter import messagebox
@@ -78,7 +79,7 @@ canvas.create_window(760, 600, anchor="nw", window=return_label)
 return_date_entry = DateEntry(home_tab, font=("Helvetica", 12), width=18, background='darkblue', foreground='white', borderwidth=2)
 canvas.create_window(850, 600, anchor="nw", window=return_date_entry)
 
-# Create the search button
+# Create the search butto
 search_button = ttk.Button(home_tab, text="Search", command=search_action)
 canvas.create_window(1070, 600, anchor="nw", window=search_button)
 
