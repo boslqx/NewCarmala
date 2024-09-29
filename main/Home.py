@@ -23,6 +23,16 @@ def open_signin():
     login_script_path = r"C:\Users\User\OneDrive - student.newinti.edu.my\Carmala\main\Login.py"  # Path to the Login.py file
     os.system(f'python "{login_script_path}"')  # Execute the login script
 
+# Function to open the script when the "How it Works" tab is clicked
+def open_howitworks():
+    howitworks_script_path = r"C:\Users\User\OneDrive - student.newinti.edu.my\Carmala\main\How it Works.py" # Path to the How It Works.py file
+    os.system(f'python "{howitworks_script_path}"')  # Execute the login script
+
+# Function to open the script when the "Become a Renter" tab is clicked
+def open_becomearenter():
+    becomearenter_script_path = r"C:\Users\User\OneDrive - student.newinti.edu.my\Carmala\main\Become a renter.py" # Path to the Become a Renter.py file
+    os.system(f'python "{becomearenter_script_path}"')  # Execute the login script
+
 # Create main application window
 root = tk.Tk()
 root.title("Car Rental Service")
@@ -88,6 +98,10 @@ def on_tab_changed(event):
     selected_tab = event.widget.tab(event.widget.index("current"))["text"]
     if selected_tab == "Sign In":
         open_signin()
+    elif selected_tab == "How It Works":
+        open_howitworks()
+    elif selected_tab == "Become a Renter":
+        open_becomearenter()
 
 # Bind the event to the notebook
 notebook.bind("<<NotebookTabChanged>>", on_tab_changed)
