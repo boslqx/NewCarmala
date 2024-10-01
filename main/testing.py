@@ -1,3 +1,4 @@
+
 import tkinter as tk
 from tkinter import Scrollbar, Canvas
 from PIL import Image, ImageTk
@@ -58,6 +59,7 @@ def on_get_started():
 
 
 # Create the "Get Started" button
+get_started_btn = tk.Button(labels[-1],bg ="#1572D3",fg = "white",text="Get Started", font=("Poppins", 16),command=on_get_started)
 get_started_btn = tk.Button(labels[-1],bg ="#1572D3",fg = "white",text="Get Started", font=("Poppins", 16),command=on_get_started, width=21, height=2)
 
 
