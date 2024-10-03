@@ -1,6 +1,46 @@
 import tkinter as tk
 from PIL import Image, ImageTk
 from tkinter import messagebox
+import sqlite3
+
+from main.Database import connect_database
+
+
+# connect database and create table
+def create_user_table():
+    conn = connect_database()
+    cursor = conn.cursor()
+
+    # create table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS User Account (
+            User_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+            Email TEXT,
+            Username TEXT,
+            Password TEXT,
+        )    
+    """)
+    conn.commit()
+    return conn
+
+def save_useraccount_data():
+    email = entry_reg_email.get()
+    username = entry_reg_username.get()
+    password = entry_reg_password.get()
+
+    conn = connect_database()
+    cursor= conn.cursor()
+    cursor.execute(''' 
+            INSERT INTO User Account (email, username, password )
+            VALUES (?, ?, ? )
+    ''', (email, username, password))
+    conn.commit() # make sure data save successfully
+    conn.close()
+    messagebox.showinfo("Success", "Data saved successfully")
+    refresh_treeview()
+
+
+
 
 
 def login():
