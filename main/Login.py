@@ -1,8 +1,6 @@
 import tkinter as tk
 from PIL import Image, ImageTk
 from tkinter import messagebox
-import sqlite3
-
 from main.Database import connect_database
 
 
@@ -13,7 +11,7 @@ def create_user_table():
 
     # create table
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS User Account (
+        CREATE TABLE IF NOT EXISTS User_Account (
             User_ID INTEGER PRIMARY KEY AUTOINCREMENT,
             Email TEXT,
             Username TEXT,
@@ -30,17 +28,13 @@ def save_useraccount_data():
 
     conn = connect_database()
     cursor= conn.cursor()
-    cursor.execute(''' 
-            INSERT INTO User Account (email, username, password )
-            VALUES (?, ?, ? )
-    ''', (email, username, password))
+    cursor.execute("""
+        INSERT INTO User_Account (Email, Username, Password)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (email, username, password))
     conn.commit() # make sure data save successfully
     conn.close()
     messagebox.showinfo("Success", "Data saved successfully")
-    refresh_treeview()
-
-
-
 
 
 def login():
@@ -48,7 +42,7 @@ def login():
     password = entry_password.get()
 
     # Dummy check for credentials
-    if username == "user" and password == "pass":
+    if username == entry_reg_username.get() and password == entry_reg_password.get():
         messagebox.showinfo("Login Successful", "Welcome!")
     else:
         messagebox.showerror("Login Failed", "Incorrect username or password.")
