@@ -20,5 +20,5 @@ cursor.execute("""
 """)
 conn.commit()
 
-cursor.execute("INSERT INTO User_Account VALUES('1', 'boslianqx@gmail.com', 'bos', 'liangqixun')")
+
 

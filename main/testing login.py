@@ -4,31 +4,89 @@ from tkinter import messagebox
 from main.Database import connect_database
 
 
-def save_useraccount_data():
-    email = entry_reg_email.get()
-    username = entry_reg_username.get()
-    password = entry_reg_password.get()
+def save_useraccount_data(email, username, password):
+    try:
+        # Connect to the database
+        conn = connect_database()
+        cursor = conn.cursor()
 
-    conn = connect_database()
-    cursor= conn.cursor()
-    cursor.execute("""
-        INSERT INTO User_Account (Email, Username, Password)
-        VALUES (?, ?, ?, ?, ?, ?)
-    """, (email, username, password))
-    conn.commit() # make sure data save successfully
-    conn.close()
-    messagebox.showinfo("Success", "Data saved successfully")
+        # Ensure the User_Account table exists
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS User_Account (
+                ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                Email TEXT NOT NULL,
+                Username TEXT NOT NULL UNIQUE,  -- Ensures unique usernames
+                Password TEXT NOT NULL
+            )
+        """)
+        print("Table check/creation succeeded.")  # Debugging message
+
+        # Insert user data into the User_Account table
+        cursor.execute("""
+            INSERT INTO User_Account (Email, Username, Password)
+            VALUES (?, ?, ?)
+        """, (email, username, password))
+
+        conn.commit()  # Ensure the transaction is saved to the database
+        conn.close()
+
+        # Inform the user of success
+        messagebox.showinfo("Success", "Account registered successfully!")
+    except Exception as e:
+        print(f"Error saving user account: {e}")  # Debugging output
+        messagebox.showerror("Database Error", f"An error occurred: {e}")
+
+
+
+def register_user():
+    # Fetch user inputs
+    reg_email = entry_reg_email.get().strip()  # Remove spaces
+    reg_username = entry_reg_username.get().strip()  # Remove spaces
+    reg_password = entry_reg_password.get().strip()  # Remove spaces
+    confirm_password = entry_confirm_password.get().strip()  # Remove spaces
+
+    # Validation for password
+    if reg_password != confirm_password:
+        messagebox.showerror("Error", "Passwords do not match!")
+    elif len(reg_password) < 8 or not reg_password.isalnum():
+        messagebox.showerror("Error", "Password must be at least 8 characters and contain no special characters!")
+    else:
+        try:
+            # Save the account to the database
+            save_useraccount_data(reg_email, reg_username, reg_password)
+            # After registering, return to the login frame
+            registration_frame.pack_forget()
+            login_frame.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
+        except Exception as e:
+            messagebox.showerror("Registration Failed", f"Error during registration: {e}")
+
 
 
 def login():
-    username = entry_username.get()
-    password = entry_password.get()
+    username = entry_username.get().strip()  # Trim any leading/trailing spaces
+    password = entry_password.get().strip()  # Trim any leading/trailing spaces
 
-    # Dummy check for credentials
-    if username == entry_reg_username.get() and password == entry_reg_password.get():
-        messagebox.showinfo("Login Successful", "Welcome!")
-    else:
-        messagebox.showerror("Login Failed", "Incorrect username or password.")
+    try:
+        conn = connect_database()
+        cursor = conn.cursor()
+
+        # Retrieve user data from the database
+        cursor.execute("""
+            SELECT * FROM User_Account WHERE Username = ? AND Password = ?
+        """, (username, password))
+
+        user = cursor.fetchone()  # Fetch a single matching row
+        conn.close()
+
+        # Debugging output to check what was retrieved
+        if user:
+            print(f"User found: {user}")
+            messagebox.showinfo("Login Successful", "Welcome!")
+        else:
+            print(f"Login failed for Username: {username}, Password: {password}")
+            messagebox.showerror("Login Failed", "Incorrect username or password.")
+    except Exception as e:
+        messagebox.showerror("Database Error", f"An error occurred: {e}")
 
 
 def open_registration_frame():
@@ -95,7 +153,7 @@ def restore_placeholder(event, placeholder_text):
 # Create the main window
 root = tk.Tk()
 root.title("Account Login Page")
-root.geometry('1280x780')
+root.geometry('1280x700')
 
 # Create a main frame for the layout
 main_frame = tk.Frame(root)
