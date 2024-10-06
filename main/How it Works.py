@@ -1,6 +1,12 @@
 import tkinter as tk
 from tkinter import Scrollbar, Canvas
 from PIL import Image, ImageTk
+import subprocess
+
+# Function to open the selected button
+def open_home():
+    root.destroy()
+    subprocess.Popen(["python", "Home.py"])
 
 # Create a window with a specific geometry
 root = tk.Tk()
@@ -56,7 +62,7 @@ for idx, image_path in enumerate(image_paths):
     labels.append(label)  # Store label references
 
 # Create the "Get Started" button
-get_started_btn = tk.Button(labels[-1],bg ="#1572D3",fg = "white",text="Get Started", font=("Poppins", 16), width=21, height=2, command=root.destroy)
+get_started_btn = tk.Button(labels[-1],bg ="#1572D3",fg = "white",text="Get Started", font=("Poppins", 16), width=21, height=2, command=open_home)
 
 # Place the button at the bottom center of the last image
 get_started_btn.place(relx=0.5, rely=0.95, anchor=tk.CENTER)

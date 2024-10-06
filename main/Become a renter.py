@@ -31,7 +31,8 @@ canvas.create_window((0, 0), window=image_frame, anchor="nw")
 image_paths = [
     r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-09-27 103340.png",
     r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-09-27 103615.png",
-    r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-09-27 103735.png"
+    r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-10-06 212255.png",
+    r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-10-06 212059.png"
 ]
 
 loaded_images = []
@@ -50,18 +51,6 @@ for idx, image_path in enumerate(image_paths):
     label = tk.Label(image_frame, image=img_tk)
     label.pack()  # Pack each image to be visible one at a time with scrolling
     labels.append(label)  # Store label references
-
-
-# Add the "Get Started" button inside the last image
-def on_get_started():
-    print("Get Started button clicked!")
-
-
-# Create the "Get Started" button
-get_started_btn = tk.Button(labels[-1],bg ="#1572D3",fg = "white",text="Get Started", font=("Poppins", 16), width=21, height=2, command=root.destroy)
-
-# Place the button at the bottom center of the last image
-get_started_btn.place(relx=0.5, rely=0.9, anchor=tk.CENTER)
 
 # Start the main loop
 root.mainloop()
