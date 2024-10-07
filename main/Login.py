@@ -1,43 +1,27 @@
 import tkinter as tk
 from PIL import Image, ImageTk
 from tkinter import messagebox
-from main.Database import connect_database
+import sqlite3
+import os
 
 
-def save_useraccount_data(email, username, password):
-    try:
-        # Connect to the database
-        conn = connect_database()
-        cursor = conn.cursor()
-
-        # Ensure the User_Account table exists
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS User_Account (
-                ID INTEGER PRIMARY KEY AUTOINCREMENT,
-                Email TEXT NOT NULL,
-                Username TEXT NOT NULL UNIQUE,  -- Ensures unique usernames
-                Password TEXT NOT NULL
-            )
-        """)
-        print("Table check/creation succeeded.")  # Debugging message
-
-        # Insert user data into the User_Account table
-        cursor.execute("""
-            INSERT INTO User_Account (Email, Username, Password)
-            VALUES (?, ?, ?)
-        """, (email, username, password))
-
-        conn.commit()  # Ensure the transaction is saved to the database
-        conn.close()
-
-        # Inform the user of success
-        messagebox.showinfo("Success", "Account registered successfully!")
-    except Exception as e:
-        print(f"Error saving user account: {e}")  # Debugging output
-        messagebox.showerror("Database Error", f"An error occurred: {e}")
+# Connect to database and create table if not exists
+def create_db():
+    conn = sqlite3.connect('Carmala.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS UserAccount (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            password TEXT NOT NULL,
+            email TEXT NOT NULL
+        );
+    ''')
+    conn.commit()
+    conn.close()
 
 
-
+# Register user and insert into database
 def register_user():
     # Fetch user inputs
     reg_email = entry_reg_email.get().strip()  # Remove spaces
@@ -52,41 +36,51 @@ def register_user():
         messagebox.showerror("Error", "Password must be at least 8 characters and contain no special characters!")
     else:
         try:
-            # Save the account to the database
-            save_useraccount_data(reg_email, reg_username, reg_password)
+            # Connect to database and insert user data
+            conn = sqlite3.connect('Carmala.db')
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO UserAccount (email, username, password) 
+                VALUES (?, ?, ?)
+            ''', (reg_email, reg_username, reg_password))
+            conn.commit()
+            conn.close()
+
+            messagebox.showinfo("Success", "User registered successfully!")
+
             # After registering, return to the login frame
             registration_frame.pack_forget()
             login_frame.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
-        except Exception as e:
-            messagebox.showerror("Registration Failed", f"Error during registration: {e}")
+
+        except sqlite3.IntegrityError:
+            messagebox.showerror("Error", "Username already exists!")
 
 
-
+# Login function to verify user credentials
 def login():
     username = entry_username.get().strip()  # Trim any leading/trailing spaces
     password = entry_password.get().strip()  # Trim any leading/trailing spaces
 
-    try:
-        conn = connect_database()
-        cursor = conn.cursor()
+    # Connect to database to verify credentials
+    conn = sqlite3.connect('Carmala.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT * FROM UserAccount WHERE username = ? AND password = ?
+    ''', (username, password))
+    user = cursor.fetchone()
+    conn.close()
 
-        # Retrieve user data from the database
-        cursor.execute("""
-            SELECT * FROM User_Account WHERE Username = ? AND Password = ?
-        """, (username, password))
+    if user:
+        messagebox.showinfo("Login Success", "You have successfully logged in!")
+        root.destroy()  # Close the current window
+        open_home_page()  # Open the home page (Home.py)
+    else:
+        messagebox.showerror("Login Failed", "Invalid username or password.")
 
-        user = cursor.fetchone()  # Fetch a single matching row
-        conn.close()
 
-        # Debugging output to check what was retrieved
-        if user:
-            print(f"User found: {user}")
-            messagebox.showinfo("Login Successful", "Welcome!")
-        else:
-            print(f"Login failed for Username: {username}, Password: {password}")
-            messagebox.showerror("Login Failed", "Incorrect username or password.")
-    except Exception as e:
-        messagebox.showerror("Database Error", f"An error occurred: {e}")
+# Function to open the home page (replace with actual home page code)
+def open_home_page():
+    os.system('python Home.py')  # This will execute the Home.py script
 
 
 def open_registration_frame():
@@ -95,26 +89,6 @@ def open_registration_frame():
 
     # Show the registration frame
     registration_frame.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
-
-
-def register_user():
-    # Dummy function for registration
-    reg_email = entry_reg_email.get()
-    reg_username = entry_reg_username.get()
-    reg_password = entry_reg_password.get()
-    confirm_password = entry_confirm_password.get()
-
-    # Simple check for matching passwords
-    if reg_password != confirm_password:
-        messagebox.showerror("Error", "Passwords do not match!")
-    elif len(reg_password) < 8 or not reg_password.isalnum():
-        messagebox.showerror("Error", "Password must be at least 8 characters and contain no special characters!")
-    else:
-        messagebox.showinfo("Register", f"User {reg_username} registered successfully!")
-        # After registering, return to the login frame
-        registration_frame.pack_forget()
-        login_frame.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
-
 
 def forgot_password():
     messagebox.showinfo("Forgot Password", "Redirecting to password recovery...")
@@ -155,6 +129,10 @@ root = tk.Tk()
 root.title("Account Login Page")
 root.geometry('1280x700')
 
+# Call the function to create the database and table
+create_db()
+
+# Main Tkinter window, login and registration UI setup
 # Create a main frame for the layout
 main_frame = tk.Frame(root)
 main_frame.pack(fill=tk.BOTH, expand=True)
@@ -274,6 +252,7 @@ button_back_to_login = tk.Button(registration_frame, text="Back to Login",  font
                                                   login_frame.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)],
                                  bg="#1572D3")
 button_back_to_login.pack(pady=10)
+
 
 # Start the main event loop
 root.mainloop()

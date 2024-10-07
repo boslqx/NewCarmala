@@ -1,24 +1,23 @@
 import sqlite3
 
-# Create database
-def connect_database():
-    database = sqlite3.connect('carmala.db')
-    return database
+# connect to database and create file Carmala
+connection = sqlite3.connect('Carmala.db')
 
+# create a cursor to execute SQL commands
+cursor = connection.cursor()
 
-conn = connect_database()
-cursor = conn.cursor()
+# create table User_account
+cursor.execute('''
+    CREATE TABLE IF NOT EXISTS UserAccount (
+        UserID INTEGER PRIMARY KEY AUTOINCREMENT,
+        Email TEXT NOT NULL,
+        Username TEXT NOT NULL,
+        Password TEXT NOT NULL
+    )
+''')
 
-# Create table
-cursor.execute("""
-    CREATE TABLE IF NOT EXISTS User_Account (
-        User_ID INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-        Email TEXT,
-        Username TEXT,
-        Password TEXT
-    )    
-""")
-conn.commit()
-
+# commit the changes and close the connection
+connection.commit()
+connection.close()
 
 
