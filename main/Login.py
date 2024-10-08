@@ -82,14 +82,14 @@ def login():
         if admin:
             messagebox.showinfo("Admin Login Success", "Welcome Admin!")
             root.destroy()  # Close the current window
-            open_admin_page(admin=True)  # Open home page for admin
+            open_admin_page()  # Open home page for admin
         else:
             messagebox.showerror("Login Failed", "Invalid username or password.")  # Neither user nor admin credentials matched
     else:
         conn.close()
         messagebox.showinfo("Login Success", "You have successfully logged in!")
         root.destroy()  # Close the current window
-        open_home_page(admin=False)  # Open the home page for user
+        open_home_page()  # Open the home page for user
 
 
 # Function to open the home page (replace with actual home page code)
