@@ -56,31 +56,49 @@ def register_user():
             messagebox.showerror("Error", "Username already exists!")
 
 
-# Login function to verify user credentials
+# Login function to verify user or admin credentials
 def login():
     username = entry_username.get().strip()  # Trim any leading/trailing spaces
     password = entry_password.get().strip()  # Trim any leading/trailing spaces
 
-    # Connect to database to verify credentials
+    # Connect to the database to verify credentials
     conn = sqlite3.connect('Carmala.db')
     cursor = conn.cursor()
+
+    # First, check if the credentials match a user
     cursor.execute('''
         SELECT * FROM UserAccount WHERE username = ? AND password = ?
     ''', (username, password))
     user = cursor.fetchone()
-    conn.close()
 
-    if user:
+    # If no matching user is found, check if the credentials match an admin
+    if not user:
+        cursor.execute('''
+            SELECT * FROM AdminAccount WHERE Admin_username = ? AND Admin_password = ?
+        ''', (username, password))
+        admin = cursor.fetchone()
+        conn.close()
+
+        if admin:
+            messagebox.showinfo("Admin Login Success", "Welcome Admin!")
+            root.destroy()  # Close the current window
+            open_admin_page(admin=True)  # Open home page for admin
+        else:
+            messagebox.showerror("Login Failed", "Invalid username or password.")  # Neither user nor admin credentials matched
+    else:
+        conn.close()
         messagebox.showinfo("Login Success", "You have successfully logged in!")
         root.destroy()  # Close the current window
-        open_home_page()  # Open the home page (Home.py)
-    else:
-        messagebox.showerror("Login Failed", "Invalid username or password.")
+        open_home_page(admin=False)  # Open the home page for user
 
 
 # Function to open the home page (replace with actual home page code)
 def open_home_page():
     os.system('python Home.py')  # This will execute the Home.py script
+
+# Function to open the home page (replace with actual home page code)
+def open_admin_page():
+    os.system('python Adminpage.py')  # This will execute the Home.py script
 
 
 def open_registration_frame():
@@ -159,6 +177,7 @@ label_title.pack(pady=20)
 label_username = tk.Label(login_frame, text="Username:", bg='#F1F1F1')
 label_username.pack()
 entry_username = tk.Entry(login_frame)
+entry_adminusername = tk.Entry(login_frame)
 entry_username.pack(pady=5)
 
 # Add placeholder text for the username
@@ -168,6 +187,7 @@ add_placeholder(entry_username, "Enter your username")
 label_password = tk.Label(login_frame, text="Password:", bg='#F1F1F1')
 label_password.pack()
 entry_password = tk.Entry(login_frame, show="")
+entry_adminpassword = tk.Entry(login_frame, show="")
 entry_password.pack(pady=5)
 
 # Add placeholder text for the password
