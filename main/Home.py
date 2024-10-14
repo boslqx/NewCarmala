@@ -4,7 +4,12 @@ from tkcalendar import DateEntry  # Import DateEntry from tkcalendar
 from PIL import ImageTk, Image
 from tkinter import messagebox
 import subprocess
-import os
+
+
+# open car list after user input locatiom and date
+def open_carlist():
+    root.destroy()
+    subprocess.Popen(["python", "Car list.py"])
 
 # Functionality for the Search button
 def search_action():
@@ -16,12 +21,12 @@ def search_action():
     if not location or not pickup_date or not return_date:
         messagebox.showwarning("Input Error", "Please fill all the fields.")
     else:
-        print(f"Location: {location}, Pickup Date: {pickup_date}, Return Date: {return_date}")
+        open_carlist()
 
 # Function to open the selected button
-def open_signin():
+def open_userprofile():
     root.destroy()
-    subprocess.Popen(["python", "Login.py"])
+    subprocess.Popen(["python", "User profile.py"])
 
 # Function to open the script when the "How it Works" button is clicked
 def open_howitworks():
@@ -32,6 +37,16 @@ def open_howitworks():
 def open_becomearenter():
     root.destroy()
     subprocess.Popen(["python", "Become a renter.py"])
+
+
+# Function to handle logout
+def log_out():
+    global logged_in_user
+    logged_in_user = None  # Clear session
+    root.destroy()
+    subprocess.Popen(["python", "Login.py"])
+
+
 
 # Create main application window
 root = tk.Tk()
@@ -59,9 +74,13 @@ canvas.create_window(300, 40, anchor="nw", window=become_renter_button)
 how_it_works_button = tk.Button(root, bg="#1572D3", text="How It Works", font=("Poppins", 12), command=open_howitworks)
 canvas.create_window(470, 40, anchor="nw", window=how_it_works_button)
 
-# create log in button
-sign_in_button = tk.Button(root, bg="#1572D3", text="Sign In", font=("Poppins", 12), command=open_signin)
-canvas.create_window(600, 40, anchor="nw", window=sign_in_button)
+# create user profile button
+userprofile_button = tk.Button(root, bg="#1572D3", text="Profile", font=("Poppins", 12), command=open_userprofile)
+canvas.create_window(610, 40, anchor="nw", window=userprofile_button)
+
+# create log out button
+logout_button = tk.Button(root, bg="#1572D3", text="Log Out", font=("Poppins", 12), command=log_out)
+canvas.create_window(1100, 40, anchor="nw", window=logout_button)
 
 
 # Create input fields and labels for Location, Pickup Date, and Return Date at the bottom of the page

@@ -8,6 +8,21 @@ def open_home():
     root.destroy()
     subprocess.Popen(["python", "Home.py"])
 
+# Function to open the selected button
+def open_userprofile():
+    root.destroy()
+    subprocess.Popen(["python", "User profile.py"])
+
+# Function to open the script when the "How it Works" button is clicked
+def open_howitworks():
+    root.destroy()
+    subprocess.Popen(["python", "How it Works.py"])
+
+# Function to open the script when the "Become a Renter" button is clicked
+def open_becomearenter():
+    root.destroy()
+    subprocess.Popen(["python", "Become a renter.py"])
+
 # Create a window with a specific geometry
 root = tk.Tk()
 root.title("How it Works")
@@ -28,6 +43,22 @@ scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 # Configure canvas scrolling
 canvas.configure(yscrollcommand=scrollbar.set)
 canvas.bind('<Configure>', lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+
+# create home button
+home_button = tk.Button(root, bg="#1572D3", text="Home", font=("Poppins", 12), command=open_home)
+canvas.create_window(200, 40, anchor="nw", window=home_button)
+
+# create become a renter button
+become_renter_button = tk.Button(root, bg="#1572D3", text="Become a Renter", font=("Poppins", 12), command=open_becomearenter)
+canvas.create_window(300, 40, anchor="nw", window=become_renter_button)
+
+# create how it works button
+how_it_works_button = tk.Button(root, bg="#1572D3", text="How It Works", font=("Poppins", 12), command=open_howitworks)
+canvas.create_window(470, 40, anchor="nw", window=how_it_works_button)
+
+# create profile button
+userprofile_button = tk.Button(root, bg="#1572D3", text="Profile", font=("Poppins", 12), command=open_userprofile)
+canvas.create_window(600, 40, anchor="nw", window=userprofile_button)
 
 # Create another frame inside the canvas to hold the images
 image_frame = tk.Frame(canvas)

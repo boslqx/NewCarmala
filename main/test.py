@@ -30,6 +30,28 @@ def create_db():
     conn.close()
 
 
+# Function to validate login
+def validate_login(username, password):
+    global logged_in_user  # To store session
+    conn = sqlite3.connect('Carmala.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT UserID, Username FROM UserAccount WHERE Username = ? AND Password = ?", (username, password))
+    user = cursor.fetchone()
+    conn.close()
+
+    if user:
+        logged_in_user = user  # Storing the user session (UserID, Username)
+        open_main_window()  # Redirect to main window
+    else:
+        messagebox.showerror("Error", "Invalid login credentials")
+
+
+# Function to open main window after login
+def open_main_window():
+    login_frame.pack_forget()  # Hide login window
+    # Add code to open the home window
+
+
 # Function to log out and clear session
 def sign_out():
     global logged_in_user

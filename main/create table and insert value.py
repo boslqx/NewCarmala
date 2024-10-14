@@ -1,24 +1,36 @@
 import sqlite3
 
-# Connect to the Carmala database
-connection = sqlite3.connect('Carmala.db')
+# Connect to the database
+connection = sqlite3.connect('Database.db')
 cursor = connection.cursor()
 
-# Insert some user account data
-user_data = [
-    ("admin_avis", "bffuJkfs34", "avis@gmail.com"),
-    ("admin_klook", "ljoNjN3k5b", "klook@gmail.com"),
-    ("admin_kayak", "MausoH1i3h", "kayak@gmailx.com")
-]
+# Check if the table exists or create it
+cursor.execute('''
+    CREATE TABLE IF NOT EXISTS UserAccount (
+        UserID INTEGER PRIMARY KEY AUTOINCREMENT,
+        Email TEXT NOT NULL,
+        Username TEXT NOT NULL,
+        Password TEXT NOT NULL,
+        ProfilePicture BLOB,
+        Gender TEXT,
+        Country TEXT,
+        DrivingLicense BLOB,
+        IdentificationNumber TEXT    
+    )
+''')
 
-# Insert data into UserAccount table
-cursor.executemany('''
-    INSERT INTO AdminAccount (Admin_username, Admin_password, Admin_email)
+# Insert test data (optional)
+cursor.execute('''
+    INSERT INTO UserAccount (Email, Username, Password)
     VALUES (?, ?, ?)
-''', user_data)
+''', ('test@example.com', 'testuser', 'password123'))
 
+# Query the data to check if the table is working
+cursor.execute("SELECT * FROM UserAccount")
+rows = cursor.fetchall()
+
+print(rows)  # This will print the contents of the UserAccount table
+
+# Commit the changes and close the connection
 connection.commit()
 connection.close()
-
-print("User accounts inserted successfully.")
-
