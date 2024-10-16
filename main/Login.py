@@ -165,7 +165,7 @@ def restore_placeholder(event, placeholder_text):
 # Create the main window
 root = tk.Tk()
 root.title("Account Login Page")
-root.geometry('1280x700')
+root.geometry('1000x680')
 
 # Call the function to create the database and table
 create_db()
@@ -191,31 +191,31 @@ right_frame.pack(fill=tk.Y, side=tk.RIGHT)
 
 # Create the title label in the login frame
 label_title = tk.Label(login_frame, text="Login", font=("Poppins", 24, "bold"), bg='#F1F1F1')
-label_title.pack(pady=20)
+label_title.pack(pady=100)
 
 # Username label and entry in the login frame
-label_username = tk.Label(login_frame, text="Username:", bg='#F1F1F1')
-label_username.pack()
-entry_username = tk.Entry(login_frame)
-entry_adminusername = tk.Entry(login_frame)
-entry_username.pack(pady=5)
+label_username = tk.Label(login_frame, text="Username:", bg='#F1F1F1', font=("Poppins"))
+label_username.place(x=60, y=170)
+
+entry_username = tk.Entry(login_frame, font=("Poppins", 14), width=25)
+entry_username.place(x=63, y=195)
 
 # Add placeholder text for the username
 add_placeholder(entry_username, "Enter your username")
 
 # Password label and entry in the login frame
-label_password = tk.Label(login_frame, text="Password:", bg='#F1F1F1')
-label_password.pack()
-entry_password = tk.Entry(login_frame, show="")
-entry_adminpassword = tk.Entry(login_frame, show="")
-entry_password.pack(pady=5)
+label_password = tk.Label(login_frame, text="Password:", bg='#F1F1F1', font=("Poppins"))
+label_password.place(x=60, y=250)
+
+entry_password = tk.Entry(login_frame, show="", font=("Poppins", 14), width=25)
+entry_password.place(x=63, y=275)
 
 # Add placeholder text for the password
 add_placeholder_password(entry_password, "Enter your password")
 
 # Login button in the login frame
 button_login = tk.Button(login_frame, text="Log in", font="Poppins", command=login, bg="#1572D3")
-button_login.pack(pady=20)
+button_login.place(x=180, y=340)
 
 # Forgot password and register labels in the login frame
 label_forgot_password = tk.Label(login_frame, text="Forgot password?", fg="black", cursor="hand2", bg='#F1F1F1')
@@ -232,33 +232,33 @@ registration_frame = tk.Frame(main_frame, bg='#F1F1F1')
 
 # Registration form title
 label_reg_title = tk.Label(registration_frame, text="Register", font=("Poppins", 24, "bold"), bg='#F1F1F1')
-label_reg_title.pack(pady=20)
+label_reg_title.pack(pady=70)
 
 # Registration Email field
-label_reg_email = tk.Label(registration_frame, text="Email:", bg='#F1F1F1')
-label_reg_email.pack()
-entry_reg_email = tk.Entry(registration_frame)
-entry_reg_email.pack(pady=5)
+label_reg_email = tk.Label(registration_frame, text="Email:", bg='#F1F1F1', font=("Poppins"))
+label_reg_email.place(x=60, y=150)
+entry_reg_email = tk.Entry(registration_frame, font=("Poppins", 14), width=25)
+entry_reg_email.place(x=63, y=175)
 
 # Add placeholder text for the email
 add_placeholder(entry_reg_email, "Enter your username")
 
 
 # Registration Username field
-label_reg_username = tk.Label(registration_frame, text="Username:", bg='#F1F1F1')
-label_reg_username.pack()
-entry_reg_username = tk.Entry(registration_frame)
-entry_reg_username.pack(pady=5)
+label_reg_username = tk.Label(registration_frame, text="Username:", bg='#F1F1F1', font=("Poppins"))
+label_reg_username.place(x=60, y=230)
+entry_reg_username = tk.Entry(registration_frame, font=("Poppins", 14), width=25)
+entry_reg_username.place(x=63, y=255)
 
 # Add placeholder text for the username
 add_placeholder(entry_reg_username, "Enter your username")
 
 
 # Registration Password field
-label_reg_password = tk.Label(registration_frame, text="Password:", bg='#F1F1F1')
-label_reg_password.pack()
-entry_reg_password = tk.Entry(registration_frame, show="")
-entry_reg_password.pack(pady=5)
+label_reg_password = tk.Label(registration_frame, text="Password:", bg='#F1F1F1', font=("Poppins"))
+label_reg_password.place(x=60, y=310)
+entry_reg_password = tk.Entry(registration_frame, show="", font=("Poppins", 14), width=25)
+entry_reg_password.place(x=63, y=335)
 
 # Add placeholder text for the password
 add_placeholder_password(entry_reg_password, "Enter your password")
@@ -266,13 +266,13 @@ add_placeholder_password(entry_reg_password, "Enter your password")
 # Password requirements note
 label_password_note = tk.Label(registration_frame, text="Minimum 8 characters, no special characters", fg="grey",
                                bg='#F1F1F1')
-label_password_note.pack()
+label_password_note.place(x=61, y=360)
 
 # Confirm Password field
-label_confirm_password = tk.Label(registration_frame, text="Confirm Password:", bg='#F1F1F1')
-label_confirm_password.pack()
-entry_confirm_password = tk.Entry(registration_frame, show="")
-entry_confirm_password.pack(pady=5)
+label_confirm_password = tk.Label(registration_frame, text="Confirm Password:", bg='#F1F1F1', font=("Poppins"))
+label_confirm_password.place(x=60, y=410)
+entry_confirm_password = tk.Entry(registration_frame, show="", font=("Poppins", 14), width=25)
+entry_confirm_password.place(x=63, y=435)
 
 # Add placeholder text for the confirm password
 add_placeholder_password(entry_confirm_password, "Enter your username")
@@ -280,18 +280,18 @@ add_placeholder_password(entry_confirm_password, "Enter your username")
 # Confirm Password matching note
 label_confirm_password_note = tk.Label(registration_frame, text="Password should be the same as above", fg="grey",
                                        bg='#F1F1F1')
-label_confirm_password_note.pack()
+label_confirm_password_note.place(x=61, y=460)
 
 # Register button
 button_register = tk.Button(registration_frame, text="Register", font="Poppins",command=register_user, bg="#1572D3")
-button_register.pack(pady=20)
+button_register.place(x=170, y=500)
 
 # Back to login button
 button_back_to_login = tk.Button(registration_frame, text="Back to Login",  font="Poppins",
                                  command=lambda: [registration_frame.pack_forget(),
                                                   login_frame.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)],
                                  bg="#1572D3")
-button_back_to_login.pack(pady=10)
+button_back_to_login.place(x=150, y=550)
 
 
 # Start the main event loop

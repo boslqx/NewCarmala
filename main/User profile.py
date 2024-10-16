@@ -85,7 +85,7 @@ def upload_profile_picture():
     file_path = filedialog.askopenfilename()
     if file_path:
         image = Image.open(file_path)
-        image = image.resize((100, 100), Image.LANCZOS)
+        image = image.resize((150, 100), Image.LANCZOS)
         profile_photo = ImageTk.PhotoImage(image)
         profile_pic_label.config(image=profile_photo)
         profile_pic_label.image = profile_photo
@@ -107,7 +107,7 @@ def save_to_database(user_id):
     driving_license = convert_image_to_blob(driving_license_path.get())  # Replace with the actual path or logic
 
     # Open the connection to the database
-    conn = sqlite3.connect('Database.db')
+    conn = sqlite3.connect('Carmala.db')
     cursor = conn.cursor()
 
     # Ensure the table exists (if it doesn't, create it)

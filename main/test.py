@@ -1,320 +1,203 @@
 import tkinter as tk
-from PIL import Image, ImageTk
+from tkinter import ttk
+from tkcalendar import DateEntry
+from PIL import ImageTk, Image
 from tkinter import messagebox
 import sqlite3
 import os
+import subprocess
 
+# Function to open the selected button
+def open_home():
+    root.destroy()
+    subprocess.Popen(["python", "Home.py"])
 
-# Global variable for storing the logged-in user session
-logged_in_user = None
+# Functionality for the Search button
+def search_action():
+    location = location_entry.get()
+    pickup_date = pickup_date_entry.get()
+    return_date = return_date_entry.get()
 
-
-# Connect to database and create table if not exists
-def create_db():
-    conn = sqlite3.connect('Carmala.db')
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS UserAccount (
-            UserID INTEGER PRIMARY KEY AUTOINCREMENT,
-            Email TEXT NOT NULL,
-            Username TEXT NOT NULL,
-            Password TEXT NOT NULL,
-            ProfilePicture BLOB,
-            Gender TEXT,
-            Country TEXT,
-            DrivingLicense BLOB,
-            IdentificationNumber TEXT    
-        )
-    ''')
-    conn.commit()
-    conn.close()
-
-
-# Function to validate login
-def validate_login(username, password):
-    global logged_in_user  # To store session
-    conn = sqlite3.connect('Carmala.db')
-    cursor = conn.cursor()
-    cursor.execute("SELECT UserID, Username FROM UserAccount WHERE Username = ? AND Password = ?", (username, password))
-    user = cursor.fetchone()
-    conn.close()
-
-    if user:
-        logged_in_user = user  # Storing the user session (UserID, Username)
-        open_main_window()  # Redirect to main window
+    if not location or not pickup_date or not return_date:
+        messagebox.showwarning("Input Error", "Please fill all the fields.")
     else:
-        messagebox.showerror("Error", "Invalid login credentials")
+        print(f"Location: {location}, Pickup Date: {pickup_date}, Return Date: {return_date}")
+        filter_car_data()  # Trigger filtering when search is performed
 
-
-# Function to open main window after login
-def open_main_window():
-    login_frame.pack_forget()  # Hide login window
-    # Add code to open the home window
-
-
-# Function to log out and clear session
-def sign_out():
-    global logged_in_user
-    logged_in_user = None  # Clear session
-    open_login_window()  # Return to login window
-
-
-# Function to open login window
-def open_login_window():
-    login_frame.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
-
-# Register user and insert into database
-def register_user():
-    # Fetch user inputs
-    reg_email = entry_reg_email.get().strip()  # Remove spaces
-    reg_username = entry_reg_username.get().strip()  # Remove spaces
-    reg_password = entry_reg_password.get().strip()  # Remove spaces
-    confirm_password = entry_confirm_password.get().strip()  # Remove spaces
-
-    # Validation for password
-    if reg_password != confirm_password:
-        messagebox.showerror("Error", "Passwords do not match!")
-    elif len(reg_password) < 8 or not reg_password.isalnum():
-        messagebox.showerror("Error", "Password must be at least 8 characters and contain no special characters!")
-    else:
-        try:
-            # Connect to database and insert user data
-            conn = sqlite3.connect('Carmala.db')
-            cursor = conn.cursor()
-            cursor.execute('''
-                INSERT INTO UserAccount (email, username, password) 
-                VALUES (?, ?, ?)
-            ''', (reg_email, reg_username, reg_password))
-            conn.commit()
-            conn.close()
-
-            messagebox.showinfo("Success", "User registered successfully!")
-
-            # After registering, return to the login frame
-            registration_frame.pack_forget()
-            login_frame.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
-
-        except sqlite3.IntegrityError:
-            messagebox.showerror("Error", "Username already exists!")
-
-
-# Login function to verify user or admin credentials
-def login():
-    username = entry_username.get().strip()  # Trim any leading/trailing spaces
-    password = entry_password.get().strip()  # Trim any leading/trailing spaces
-
-    # Connect to the database to verify credentials
-    conn = sqlite3.connect('Carmala.db')
-    cursor = conn.cursor()
-
-    # First, check if the credentials match a user
-    cursor.execute('''
-        SELECT * FROM UserAccount WHERE username = ? AND password = ?
-    ''', (username, password))
-    user = cursor.fetchone()
-
-    # If no matching user is found, check if the credentials match an admin
-    if not user:
-        cursor.execute('''
-            SELECT * FROM AdminAccount WHERE Admin_username = ? AND Admin_password = ?
-        ''', (username, password))
-        admin = cursor.fetchone()
-        conn.close()
-
-        if admin:
-            messagebox.showinfo("Admin Login Success", "Welcome Admin!")
-            root.destroy()  # Close the current window
-            open_admin_page()  # Open home page for admin
+# Function to create car display cards from database data
+def create_car_card(parent, row, col, car_data):
+    # Load car image
+    try:
+        if os.path.exists(car_data[8]):
+            car_image = Image.open(car_data[8])  # car_data[8] is the CAR_IMAGE path
+            car_image = car_image.resize((150, 100), Image.LANCZOS)
+            car_photo = ImageTk.PhotoImage(car_image)
         else:
-            messagebox.showerror("Login Failed", "Invalid username or password.")  # Neither user nor admin credentials matched
-    else:
-        conn.close()
-        messagebox.showinfo("Login Success", "You have successfully logged in!")
-        root.destroy()  # Close the current window
-        open_home_page()  # Open the home page for user
+            raise FileNotFoundError(f"File not found: {car_data[8]}")
+    except Exception as e:
+        print(f"Error loading image: {e}")
+        # Load a placeholder image if the original is not found
+        placeholder_image = Image.new('RGB', (500, 200), 'grey')  # Create a grey placeholder
+        car_photo = ImageTk.PhotoImage(placeholder_image)
+
+    # Display the image
+    image_placeholder = tk.Label(parent, image=car_photo, bg="grey")
+    image_placeholder.image = car_photo  # Keep a reference to avoid garbage collection
+    image_placeholder.grid(row=row, column=col, padx=10, pady=10)
+
+    # Display car details
+    car_name = tk.Label(parent, text=car_data[1], font=("Poppins", 12), bg="#F1F1F1")  # car_data[1] is CAR_NAME
+    car_name.grid(row=row+1, column=col, pady=5)
+
+    car_price = tk.Label(parent, text=f"${car_data[7]}/day", font=("Poppins", 12, 'bold'), bg="#F1F1F1")  # car_data[7] is CAR_PRICE
+    car_price.grid(row=row+2, column=col, pady=5)
+
+    car_attributes = tk.Label(parent, text=f"{car_data[5]} | {car_data[3]} seats | {car_data[4]}", font=("Poppins", 10), bg="#F1F1F1")
+    car_attributes.grid(row=row+3, column=col, pady=5)
+
+    # Rent Now Button
+    add_booklist_button = tk.Button(parent, text="Add to Book List", font=("Poppins", 10, 'bold'), bg="#1572D3", fg="white", cursor="hand2")
+    add_booklist_button.grid(row=row+4, column=col, pady=10)
+
+# Function to fetch car data from the database
+def fetch_car_data(capacity_filter=None, transmission_filter=None, features_filter=None, price_filter=None):
+    connection = sqlite3.connect('Carmala.db')
+    cursor = connection.cursor()
+
+    # Construct the SQL query based on filters
+    query = "SELECT * FROM CARTABLE WHERE 1=1"
+    params = []
+
+    if capacity_filter:
+        query += " AND CAR_CAPACITY = ?"
+        params.append(capacity_filter)
+
+    if transmission_filter:
+        query += " AND CAR_TRANSMISSION = ?"
+        params.append(transmission_filter)
+
+    if features_filter:
+        query += " AND CAR_FEATURES LIKE ?"
+        params.append(f"%{features_filter}%")
+
+    if price_filter:
+        # Handle different price ranges correctly
+        if " ~ " in price_filter:
+            min_price, max_price = map(int, price_filter.split(' ~ '))
+            query += " AND CAR_PRICE BETWEEN ? AND ?"
+            params.extend([min_price, max_price])
+        elif ">" in price_filter:
+            # Handle cases like ">1000" where the price is above a certain value
+            min_price = int(price_filter.replace('>', '').strip())
+            query += " AND CAR_PRICE >= ?"
+            params.append(min_price)
+
+    cursor.execute(query, params)
+    car_list = cursor.fetchall()
+
+    connection.close()
+    return car_list
 
 
-# Function to open the home page (replace with actual home page code)
-def open_home_page():
-    os.system('python Home.py')  # This will execute the Home.py script
+# Function to filter and display car data based on selected criteria
+def filter_car_data():
+    # Get selected filter values
+    capacity_value = capacity_dropdown.get()
+    transmission_value = transmission_dropdown.get()
+    features_value = features_dropdown.get()
+    price_value = price_dropdown.get()
 
-# Function to open the home page (replace with actual home page code)
-def open_admin_page():
-    os.system('python Adminpage.py')  # This will execute the Home.py script
+    # Convert capacity to a numeric value
+    capacity_filter = capacity_value.split()[0] if capacity_value else None
 
+    # Fetch filtered car data
+    filtered_cars = fetch_car_data(capacity_filter, transmission_value, features_value, price_value)
 
-def open_registration_frame():
-    # Hide the login frame
-    login_frame.pack_forget()
+    # Clear current car display
+    for widget in car_frame.winfo_children():
+        widget.destroy()
 
-    # Show the registration frame
-    registration_frame.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
+    # Display filtered car data
+    for index, car_data in enumerate(filtered_cars):
+        create_car_card(car_frame, (index // 4) * 5, index % 4, car_data)
 
-def forgot_password():
-    messagebox.showinfo("Forgot Password", "Redirecting to password recovery...")
-
-
-def add_placeholder(entry, placeholder_text):
-    entry.insert(0, placeholder_text)
-    entry.configure(fg='grey')
-    entry.bind("<FocusIn>", lambda event: clear_placeholder(event, placeholder_text))
-    entry.bind("<FocusOut>", lambda event: restore_placeholder(event, placeholder_text))
-
-def add_placeholder_password(entry, placeholder_text):
-    entry.insert(0, placeholder_text)
-    entry.configure(fg='grey')
-    entry.bind("<FocusIn>", lambda event: clear_placeholder_password(event, placeholder_text))
-    entry.bind("<FocusOut>", lambda event: restore_placeholder(event, placeholder_text))
-
-
-def clear_placeholder(event, placeholder_text):
-    if event.widget.get() == placeholder_text:
-        event.widget.delete(0, tk.END)
-        event.widget.configure(fg='black')
-
-def clear_placeholder_password(event, placeholder_text):
-    if event.widget.get() == placeholder_text:
-        event.widget.delete(0, tk.END)
-        event.widget.configure(fg="black", show="*")
-
-
-def restore_placeholder(event, placeholder_text):
-    if not event.widget.get():
-        event.widget.insert(0, placeholder_text)
-        event.widget.configure(fg='grey')
-
-
-# Create the main window
+# Create main application window
 root = tk.Tk()
-root.title("Account Login Page")
-root.geometry('1280x700')
+root.title("Car List")
+root.config(bg="#F1F1F1")
+root.geometry("1120x700")
 
-# Call the function to create the database and table
-create_db()
+# Create a canvas to hold the background and other widgets in the Home tab
+canvas = tk.Canvas(root, width=1200, height=700)
+canvas.pack(fill='both', expand=True)
 
-# Main Tkinter window, login and registration UI setup
-# Create a main frame for the layout
-main_frame = tk.Frame(root)
-main_frame.pack(fill=tk.BOTH, expand=True)
+# Add logo image to the canvas and make it a clickable button
+logo_path = r"C:\Users\User\OneDrive\Pictures\Saved Pictures\cleaned_image.png"
+logo_img = Image.open(logo_path)
+logo_img = logo_img.resize((150, 100), Image.LANCZOS)
+logo_photo = ImageTk.PhotoImage(logo_img)
 
-# Create a frame for the login page
-login_frame = tk.Frame(main_frame, bg='#F1F1F1')
-login_frame.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
+# Place the image on the canvas
+logo_button = tk.Label(root, image=logo_photo, cursor="hand2", bg="#F1F1F1")
+canvas.create_window(10, 2, anchor="nw", window=logo_button)
 
-# Create a frame for image on the right
-right_frame = tk.Frame(main_frame, bg='#F1F1F1', width=400)
-image_path = r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-09-24 200101.png"
-image = Image.open(image_path)
-image = ImageTk.PhotoImage(image)
+# Bind the image to the open_home function
+logo_button.bind("<Button-1>", lambda e: open_home())
 
-image_label = tk.Label(right_frame, image=image)
-image_label.pack(fill=tk.BOTH, expand=True)
-right_frame.pack(fill=tk.Y, side=tk.RIGHT)
+# Create input fields and labels for Location, Pickup Date, and Return Date
+location_label = tk.Label(root, text="Location", font=("Poppins", 12), bg="#F1F1F1")
+canvas.create_window(170, 40, anchor="nw", window=location_label)
 
-# Create the title label in the login frame
-label_title = tk.Label(login_frame, text="Login", font=("Poppins", 24, "bold"), bg='#F1F1F1')
-label_title.pack(pady=20)
+location_entry = tk.Entry(root, font=("Poppins", 12), width=20)
+canvas.create_window(250, 40, anchor="nw", window=location_entry)
 
-# Username label and entry in the login frame
-label_username = tk.Label(login_frame, text="Username:", bg='#F1F1F1')
-label_username.pack()
-entry_username = tk.Entry(login_frame)
-entry_adminusername = tk.Entry(login_frame)
-entry_username.pack(pady=5)
+pickup_label = tk.Label(root, text="Pickup date", font=("Poppins", 12), bg="#F1F1F1")
+canvas.create_window(450, 40, anchor="nw", window=pickup_label)
 
-# Add placeholder text for the username
-add_placeholder(entry_username, "Enter your username")
+pickup_date_entry = DateEntry(root, font=("Poppins", 12), width=18, background='darkblue', foreground='white', borderwidth=2)
+canvas.create_window(540, 40, anchor="nw", window=pickup_date_entry)
 
-# Password label and entry in the login frame
-label_password = tk.Label(login_frame, text="Password:", bg='#F1F1F1')
-label_password.pack()
-entry_password = tk.Entry(login_frame, show="")
-entry_adminpassword = tk.Entry(login_frame, show="")
-entry_password.pack(pady=5)
+return_label = tk.Label(root, text="Return date", font=("Poppins", 12), bg="#F1F1F1")
+canvas.create_window(740, 40, anchor="nw", window=return_label)
 
-# Add placeholder text for the password
-add_placeholder_password(entry_password, "Enter your password")
+return_date_entry = DateEntry(root, font=("Poppins", 12), width=18, background='darkblue', foreground='white', borderwidth=2)
+canvas.create_window(830, 40, anchor="nw", window=return_date_entry)
 
-# Login button in the login frame
-button_login = tk.Button(login_frame, text="Log in", font="Poppins", command=login, bg="#1572D3")
-button_login.pack(pady=20)
+# Create the search button
+search_button = ttk.Button(root, text="Search", command=search_action)
+canvas.create_window(1030, 40, anchor="nw", window=search_button)
 
-# Forgot password and register labels in the login frame
-label_forgot_password = tk.Label(login_frame, text="Forgot password?", fg="black", cursor="hand2", bg='#F1F1F1')
-label_forgot_password.pack(side=tk.LEFT, padx=(10, 0), anchor='s')
-label_forgot_password.bind("<Button-1>", lambda e: forgot_password())
+# Create the frame to hold the car cards
+car_frame = tk.Frame(root, bg="#F1F1F1")
+canvas.create_window(50, 120, anchor="nw", window=car_frame)
 
-label_register = tk.Label(login_frame, text="Don’t have an account? Register now", fg="black", cursor="hand2",
-                          bg='#F1F1F1')
-label_register.pack(side=tk.RIGHT, padx=(0, 10), anchor='s')
-label_register.bind("<Button-1>", lambda e: open_registration_frame())
+# Display label filter
+filter_label = tk.Label(root, text="Filter", font=("Poppins", 14), bg="#F1F1F1")
+canvas.create_window(900, 105, anchor="nw", window=filter_label)
 
-# Create a frame for the registration page
-registration_frame = tk.Frame(main_frame, bg='#F1F1F1')
+# Function to create dropdown filters
+def create_dropdown(label_text, options, x_offset, y_offset):
+    label = tk.Label(root, text=label_text, font=("Poppins", 10), bg='#1572D3', fg='white', width=12)
+    canvas.create_window(x_offset, y_offset, anchor="nw", window=label)
 
-# Registration form title
-label_reg_title = tk.Label(registration_frame, text="Register", font=("Poppins", 24, "bold"), bg='#F1F1F1')
-label_reg_title.pack(pady=20)
+    dropdown = ttk.Combobox(root, font=("Poppins", 10), values=options, width=15)
+    canvas.create_window(x_offset + 120, y_offset, anchor="nw", window=dropdown)
+    return dropdown
 
-# Registration Email field
-label_reg_email = tk.Label(registration_frame, text="Email:", bg='#F1F1F1')
-label_reg_email.pack()
-entry_reg_email = tk.Entry(registration_frame)
-entry_reg_email.pack(pady=5)
+# Capacity filter
+capacity_dropdown = create_dropdown("Capacity", ["2 seats", "5 seats", "7 seats"], 800, 140)
 
-# Add placeholder text for the email
-add_placeholder(entry_reg_email, "Enter your username")
+# Transmission filter
+transmission_dropdown = create_dropdown("Transmission", ["Automatic", "Manual"], 800, 170)
 
+# Features filter
+features_dropdown = create_dropdown("Features", ["Aircon", "4-Wheel drive", "Auto-steering"], 800, 200)
 
-# Registration Username field
-label_reg_username = tk.Label(registration_frame, text="Username:", bg='#F1F1F1')
-label_reg_username.pack()
-entry_reg_username = tk.Entry(registration_frame)
-entry_reg_username.pack(pady=5)
+# Price filter
+price_dropdown = create_dropdown("Price", ["0 ~ 200", "200 ~ 400", "400 ~ 600", "600 ~ 1000",">1000"], 800, 230)
 
-# Add placeholder text for the username
-add_placeholder(entry_reg_username, "Enter your username")
+# Fetch and display all car data initially
+filter_car_data()
 
-
-# Registration Password field
-label_reg_password = tk.Label(registration_frame, text="Password:", bg='#F1F1F1')
-label_reg_password.pack()
-entry_reg_password = tk.Entry(registration_frame, show="")
-entry_reg_password.pack(pady=5)
-
-# Add placeholder text for the password
-add_placeholder_password(entry_reg_password, "Enter your password")
-
-# Password requirements note
-label_password_note = tk.Label(registration_frame, text="Minimum 8 characters, no special characters", fg="grey",
-                               bg='#F1F1F1')
-label_password_note.pack()
-
-# Confirm Password field
-label_confirm_password = tk.Label(registration_frame, text="Confirm Password:", bg='#F1F1F1')
-label_confirm_password.pack()
-entry_confirm_password = tk.Entry(registration_frame, show="")
-entry_confirm_password.pack(pady=5)
-
-# Add placeholder text for the confirm password
-add_placeholder_password(entry_confirm_password, "Enter your username")
-
-# Confirm Password matching note
-label_confirm_password_note = tk.Label(registration_frame, text="Password should be the same as above", fg="grey",
-                                       bg='#F1F1F1')
-label_confirm_password_note.pack()
-
-# Register button
-button_register = tk.Button(registration_frame, text="Register", font="Poppins",command=register_user, bg="#1572D3")
-button_register.pack(pady=20)
-
-# Back to login button
-button_back_to_login = tk.Button(registration_frame, text="Back to Login",  font="Poppins",
-                                 command=lambda: [registration_frame.pack_forget(),
-                                                  login_frame.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)],
-                                 bg="#1572D3")
-button_back_to_login.pack(pady=10)
-
-
-# Start the main event loop
+# Run the main window
 root.mainloop()
