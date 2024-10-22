@@ -94,7 +94,7 @@ def login():
     # If no matching user is found, check if the credentials match an admin
     if not user:
         cursor.execute('''
-            SELECT * FROM AdminAccount WHERE Admin_username = ? AND Admin_password = ?
+            SELECT * FROM AdminAccount WHERE AdminUsername = ? AND AdminPassword = ?
         ''', (username, password))
         admin = cursor.fetchone()
         conn.close()

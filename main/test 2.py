@@ -223,6 +223,7 @@ def next_page():
     display_cars()
 
 # Function to open the booking list window
+# Function to open the booking list window
 def open_booking_list():
     booking_window = tk.Toplevel(root)
     booking_window.title("Booking List")
@@ -245,8 +246,8 @@ def open_booking_list():
     canvas.configure(yscrollcommand=scrollbar.set)
 
     # Create a frame inside the canvas to contain the car frames
-    content_frame = tk.Frame(canvas, bg="#F1F1F1", width=500)
-    content_frame_id = canvas.create_window((0, 0), window=content_frame, anchor="nw")
+    content_frame = tk.Frame(canvas, bg="#F1F1F1")
+    content_frame_id = canvas.create_window((600, 0), window=content_frame, anchor="nw")
 
     # Update the scrollregion each time the content changes
     def update_scrollregion(event):
@@ -264,7 +265,7 @@ def open_booking_list():
     # Add car frames to the content frame
     for car in booking_list:
         # Create a frame for each car
-        car_frame = tk.Frame(content_frame, bg="#F1F1F1", relief=tk.RIDGE, borderwidth=2, width=600)
+        car_frame = tk.Frame(content_frame, bg="#F1F1F1", relief=tk.RIDGE, borderwidth=2)
         car_frame.pack(padx=10, pady=10, fill=tk.X)
 
         # Load car image
@@ -296,21 +297,33 @@ def open_booking_list():
         car_capacity_label = tk.Label(car_frame, text=f"Capacity: {car[3]} seats", font=("Poppins", 10), bg="#F1F1F1")
         car_capacity_label.grid(row=2, column=1, sticky="w")
 
+        car_color_label = tk.Label(car_frame, text=f"Color: {car[9]}", font=("Poppins", 10), bg="#F1F1F1")  # Assuming car[9] is color
+        car_color_label.grid(row=3, column=1, sticky="w")
+
+        car_type_label = tk.Label(car_frame, text=f"Type: {car[10]}", font=("Poppins", 10), bg="#F1F1F1")  # Assuming car[10] is type
+        car_type_label.grid(row=4, column=1, sticky="w")
+
         car_fueltype_label = tk.Label(car_frame, text=f"Fuel Type: {car[4]}", font=("Poppins", 10), bg="#F1F1F1")
-        car_fueltype_label.grid(row=3, column=1, sticky="w")
+        car_fueltype_label.grid(row=5, column=1, sticky="w")
 
         car_transmission_label = tk.Label(car_frame, text=f"Transmission: {car[5]}", font=("Poppins", 10), bg="#F1F1F1")
-        car_transmission_label.grid(row=4, column=1, sticky="w")
+        car_transmission_label.grid(row=6, column=1, sticky="w")
 
         car_features_label = tk.Label(car_frame, text=f"Features: {car[6]}", font=("Poppins", 10), bg="#F1F1F1")
-        car_features_label.grid(row=5, column=1, sticky="w")
+        car_features_label.grid(row=7, column=1, sticky="w")
 
         car_price_label = tk.Label(car_frame, text=f"Price: RM{car[7]}/day", font=("Poppins", 12, 'bold'), bg="#F1F1F1")
-        car_price_label.grid(row=6, column=1, sticky="w")
+        car_price_label.grid(row=8, column=1, sticky="w")
+
+        pickup_date_label = tk.Label(car_frame, text=f"Pickup Date: {car[12]}", font=("Poppins", 10), bg="#F1F1F1")  # Assuming car[12] is pickup date
+        pickup_date_label.grid(row=10, column=1, sticky="w")
+
+        dropoff_date_label = tk.Label(car_frame, text=f"Dropoff Date: {car[13]}", font=("Poppins", 10), bg="#F1F1F1")  # Assuming car[13] is dropoff date
+        dropoff_date_label.grid(row=11, column=1, sticky="w")
 
     # Confirm Booking Button
     confirm_button = tk.Button(booking_window, text="Confirm Booking", font=("Poppins", 12, 'bold'),
-                               bg="#1572D3", fg="white", command=confirm_booking)
+                                   bg="#1572D3", fg="white", command=confirm_booking)
     confirm_button.pack(pady=20)
 
 # Function to handle booking confirmation

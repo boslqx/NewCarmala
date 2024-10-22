@@ -99,7 +99,7 @@ def save_to_database(user_id):
     username = username_entry.get()
     email = email_entry.get()  # This can still be updated if needed
     gender = gender_combobox.get()
-    country = country_combobox.get()
+    country = country_entry.get()
     identification_number = id_entry.get()
 
     # Assuming you have functions or logic to handle image file selection and conversion
@@ -213,9 +213,8 @@ canvas.create_window(400, 420, window=gender_combobox)
 country_label = tk.Label(root, text="Country", font=("Arial", 12))
 canvas.create_window(700, 420, window=country_label)
 
-country_combobox = ttk.Combobox(root, values=["Malaysia","Indonesia","Thailand","Brunei","China", "India", "Japan", "Singapore", "South Korea"], state="readonly", width=38)
-country_combobox.set("Select Country")
-canvas.create_window(900, 420, window=country_combobox)
+country_entry = tk.Entry(root, width=40)
+canvas.create_window(900, 420, window=country_entry)
 
 # Upload driving license
 license_label = tk.Label(root, text="Driving License/International License", font=("Poppins", 12))

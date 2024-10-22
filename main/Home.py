@@ -4,24 +4,87 @@ from tkcalendar import DateEntry  # Import DateEntry from tkcalendar
 from PIL import ImageTk, Image
 from tkinter import messagebox
 import subprocess
+import sqlite3
+from datetime import datetime
 
 
-# open car list after user input locatiom and date
-def open_carlist():
-    root.destroy()
-    subprocess.Popen(["python", "Car list.py"])
+# get information from database about car available for renting
+def get_available_cars(location, pickup_date, return_date):
+    # Connect to the Carmala database
+    conn = sqlite3.connect('Carmala.db')
+    cursor = conn.cursor()
+
+    # Format dates to match database format (assuming they are stored as text)
+    pickup_date = datetime.strptime(pickup_date, '%Y-%m-%d').date()
+    return_date = datetime.strptime(return_date, '%Y-%m-%d').date()
+
+    # Query to get cars that are available in the specified location
+    # and are not booked during the specified date range
+    query = """
+            SELECT * FROM CarList
+            WHERE LOWER(CarLocation) = LOWER(?)
+            AND CarID NOT IN (
+                SELECT CarID FROM BookingHistory
+                WHERE (PickupDate <= ? AND DropoffDate >= ?)
+            )
+        """
+
+    cursor.execute(query, (location, return_date, pickup_date))
+    available_cars = cursor.fetchall()
+
+    # Close the database connection
+    conn.close()
+    return available_cars
+
+# Function to open the Car List interface with the selected parameters
+def open_car_list(location, pickup_date, return_date):
+    try:
+        # Call the Car list.py script with the provided arguments directly
+        root.destroy()
+        subprocess.Popen(["python", "Car list.py", location, pickup_date, return_date])
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to open Car List: {e}")
+
 
 # Functionality for the Search button
-def search_action():
-    location = location_entry.get()
-    pickup_date = pickup_date_entry.get()
-    return_date = return_date_entry.get()
+from datetime import datetime
 
-    # Simple validation to ensure the fields are not empty
-    if not location or not pickup_date or not return_date:
-        messagebox.showwarning("Input Error", "Please fill all the fields.")
-    else:
-        open_carlist()
+def search_action():
+    location = location_entry.get().strip()  # Trim any leading/trailing spaces
+    try:
+        # Get the pickup and return dates, ensuring they are datetime objects
+        pickup_date = pickup_date_entry.get_date()
+        if isinstance(pickup_date, str):
+            pickup_date = datetime.strptime(pickup_date, '%Y-%m-%d')
+
+        return_date = return_date_entry.get_date()
+        if isinstance(return_date, str):
+            return_date = datetime.strptime(return_date, '%Y-%m-%d')
+
+        # Format dates as 'YYYY-MM-DD'
+        pickup_date_str = pickup_date.strftime('%Y-%m-%d')
+        return_date_str = return_date.strftime('%Y-%m-%d')
+
+        # Simple validation to ensure the fields are not empty
+        if not location or not pickup_date_str or not return_date_str:
+            messagebox.showwarning("Input Error", "Please fill all the fields.")
+        else:
+            # Call get_available_cars with the correct arguments
+            try:
+                # Pass pickup_date_str and return_date_str directly
+                available_cars = get_available_cars(location, pickup_date_str, return_date_str)
+                if not available_cars:
+                    messagebox.showinfo("No Cars Available", f"No cars available in {location} during the selected dates.")
+                else:
+                    # Proceed to open the Car List window without trying to format dates again
+                    open_car_list(location, pickup_date_str, return_date_str)
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to open car list: {str(e)}")
+    except Exception as date_error:
+        messagebox.showerror("Date Error", f"Failed to parse dates: {str(date_error)}")
+
+
+
 
 # Function to open the selected button
 def open_userprofile():
@@ -54,7 +117,7 @@ root.title("Car Rental Service")
 root.geometry("1200x700")  # Adjust window size to fit the design
 
 # Load and set the background image in the Home tab
-background_image_path = r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-10-05 232635.png"  # Your background image path
+background_image_path = r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-10-17 095826.png"  # Your background image path
 bg_image = Image.open(background_image_path)
 bg_image = bg_image.resize((1200, 700), Image.LANCZOS)  # Resize to fit the window using LANCZOS filter
 bg_photo = ImageTk.PhotoImage(bg_image)
@@ -111,5 +174,3 @@ canvas.create_window(1070, 600, anchor="nw", window=search_button)
 
 # Start the Tkinter event loop
 root.mainloop()
-
-
