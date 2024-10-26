@@ -2,12 +2,10 @@ import tkinter as tk
 from PIL import Image, ImageTk
 from tkinter import messagebox
 import sqlite3
+import Session
 import os
-
-
-# Global variable for storing the logged-in user session
-logged_in_user = None
-
+import subprocess
+import time
 
 # Connect to database and create table if not exists
 def create_db():
@@ -76,49 +74,60 @@ def register_user():
             messagebox.showerror("Error", "Username already exists!")
 
 
+logged_in_user = None
+
 # Login function to verify user or admin credentials
 def login():
     username = entry_username.get().strip()  # Trim any leading/trailing spaces
     password = entry_password.get().strip()  # Trim any leading/trailing spaces
 
     # Connect to the database to verify credentials
-    conn = sqlite3.connect('Carmala.db')
-    cursor = conn.cursor()
+    try:
+        conn = sqlite3.connect('Carmala.db')
+        cursor = conn.cursor()
 
-    # First, check if the credentials match a user
-    cursor.execute('''
-        SELECT * FROM UserAccount WHERE username = ? AND password = ?
-    ''', (username, password))
-    user = cursor.fetchone()
-
-    # If no matching user is found, check if the credentials match an admin
-    if not user:
+        # First, check if the credentials match a user
         cursor.execute('''
-            SELECT * FROM AdminAccount WHERE AdminUsername = ? AND AdminPassword = ?
+            SELECT UserID FROM UserAccount WHERE Username = ? AND Password = ?
         ''', (username, password))
-        admin = cursor.fetchone()
-        conn.close()
+        user = cursor.fetchone()
 
-        if admin:
-            messagebox.showinfo("Admin Login Success", "Welcome Admin!")
-            root.destroy()  # Close the current window
-            open_admin_page()  # Open home page for admin
+        # If no matching user is found, check if the credentials match an admin
+        if not user:
+            cursor.execute('''
+                SELECT * FROM AdminAccount WHERE AdminUsername = ? AND AdminPassword = ?
+            ''', (username, password))
+            admin = cursor.fetchone()
+
+            if admin:
+                messagebox.showinfo("Admin Login Success", "Welcome Admin!")
+                root.destroy()  # Close the current window
+                open_admin_page()  # Open home page for admin
+            else:
+                messagebox.showerror("Login Failed", "Invalid username or password.")
         else:
-            messagebox.showerror("Login Failed", "Invalid username or password.")  # Neither user nor admin credentials matched
-    else:
-        conn.close()
-        messagebox.showinfo("Login Success", "You have successfully logged in!")
-        root.destroy()  # Close the current window
-        open_home_page()  # Open the home page for user
+            user_id = user[0]
+            conn.close()
+            messagebox.showinfo("Login Success", "You have successfully logged in!")
 
+            # Set session in file
+            Session.set_user_session({"user_id": user_id})
 
-# Function to open the home page (replace with actual home page code)
-def open_home_page():
-    os.system('python Home.py')  # This will execute the Home.py script
+            root.destroy()  # Close the login window
+            open_home(user_id)
+
+    except sqlite3.Error as e:
+        messagebox.showerror("Database Error", f"An error occurred: {e}")
+    finally:
+        conn.close()  # Make sure the connection is closed
+
 
 # Function to open the home page (replace with actual home page code)
 def open_admin_page():
     os.system('python Adminpage.py')  # This will execute the Home.py script
+
+def open_home(user_id):
+    os.system('python Home.py')
 
 
 def open_registration_frame():

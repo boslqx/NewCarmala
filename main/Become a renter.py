@@ -2,26 +2,48 @@ import tkinter as tk
 from tkinter import Scrollbar, Canvas
 from PIL import Image, ImageTk
 import subprocess
+import os
+import Session
+
+logged_in_user = Session.get_user_session()
+
+if logged_in_user:
+    user_id = logged_in_user.get("user_id")
+    print(f"Logged in user ID: {user_id}")
+    # Proceed with loading user-specific data or UI
+else:
+    print("No user is logged in.")
+    # Handle the case when no user is logged in
+
 
 # Function to open the selected button
 def open_home():
     root.destroy()
-    subprocess.Popen(["python", "Home.py"])
+    os.system('python Home.py')
 
 # Function to open the selected button
 def open_userprofile():
-    root.destroy()
-    subprocess.Popen(["python", "User profile.py"])
+    process = subprocess.Popen(["python", "User profile.py"])
+    print("User Profile opened with process ID:", process.pid)
+
+    # Delay the close of the current window
+    root.after(300, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
 
 # Function to open the script when the "How it Works" button is clicked
 def open_howitworks():
-    root.destroy()
-    subprocess.Popen(["python", "How it Works.py"])
+    process = subprocess.Popen(["python", "How it Works.py"])
+    print("How it Works opened with process ID:", process.pid)
+
+    # Delay the close of the current window
+    root.after(300, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
 
 # Function to open the script when the "Become a Renter" button is clicked
 def open_becomearenter():
-    root.destroy()
-    subprocess.Popen(["python", "Become a renter.py"])
+    process = subprocess.Popen(["python", "Become a renter.py"])
+    print("Become a renter opened with process ID:", process.pid)
+
+    # Delay the close of the current window
+    root.after(300, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
 
 # Create a window with a specific geometry
 root = tk.Tk()

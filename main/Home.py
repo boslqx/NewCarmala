@@ -4,8 +4,21 @@ from tkcalendar import DateEntry  # Import DateEntry from tkcalendar
 from PIL import ImageTk, Image
 from tkinter import messagebox
 import subprocess
-import sqlite3
 from datetime import datetime
+import sqlite3
+import Session
+
+logged_in_user = Session.get_user_session()
+
+if logged_in_user:
+    user_id = logged_in_user.get("user_id")
+    print(f"Logged in user ID: {user_id}")
+    # Proceed with loading user-specific data or UI
+else:
+    print("No user is logged in.")
+    # Handle the case when no user is logged in
+
+
 
 
 # get information from database about car available for renting
@@ -40,14 +53,10 @@ def get_available_cars(location, pickup_date, return_date):
 def open_car_list(location, pickup_date, return_date):
     try:
         # Call the Car list.py script with the provided arguments directly
-        root.destroy()
         subprocess.Popen(["python", "Car list.py", location, pickup_date, return_date])
+        root.after(300, root.destroy)
     except Exception as e:
         messagebox.showerror("Error", f"Failed to open Car List: {e}")
-
-
-# Functionality for the Search button
-from datetime import datetime
 
 def search_action():
     location = location_entry.get().strip()  # Trim any leading/trailing spaces
@@ -88,24 +97,39 @@ def search_action():
 
 # Function to open the selected button
 def open_userprofile():
-    root.destroy()
-    subprocess.Popen(["python", "User profile.py"])
+    process = subprocess.Popen(["python", "User profile.py"])
+    print("User Profile opened with process ID:", process.pid)
+
+    # Delay the close of the current window
+    root.after(300, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
 
 # Function to open the script when the "How it Works" button is clicked
 def open_howitworks():
-    root.destroy()
-    subprocess.Popen(["python", "How it Works.py"])
+    process = subprocess.Popen(["python", "How it Works.py"])
+    print("How it Works opened with process ID:", process.pid)
+
+    # Delay the close of the current window
+    root.after(300, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
 
 # Function to open the script when the "Become a Renter" button is clicked
 def open_becomearenter():
-    root.destroy()
-    subprocess.Popen(["python", "Become a renter.py"])
+    process = subprocess.Popen(["python", "Become a renter.py"])
+    print("Become a renter opened with process ID:", process.pid)
 
+    # Delay the close of the current window
+    root.after(300, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
+
+# Function to open the script when the "Become a Renter" button is clicked
+def open_bookingdetails():
+    process = subprocess.Popen(["python", "Booking details.py"])
+    print("Booking details opened with process ID:", process.pid)
+
+    # Delay the close of the current window
+    root.after(300, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
 
 # Function to handle logout
 def log_out():
-    global logged_in_user
-    logged_in_user = None  # Clear session
+    Session.clear_user_session()
     root.destroy()
     subprocess.Popen(["python", "Login.py"])
 
@@ -137,14 +161,17 @@ canvas.create_window(300, 40, anchor="nw", window=become_renter_button)
 how_it_works_button = tk.Button(root, bg="#1572D3", text="How It Works", font=("Poppins", 12), command=open_howitworks)
 canvas.create_window(470, 40, anchor="nw", window=how_it_works_button)
 
+# create Booking details button
+bookingdetails_button = tk.Button(root, bg="#1572D3", text="Booking Details", font=("Poppins", 12), command=open_bookingdetails)
+canvas.create_window(610, 40, anchor="nw", window=bookingdetails_button)
+
 # create user profile button
 userprofile_button = tk.Button(root, bg="#1572D3", text="Profile", font=("Poppins", 12), command=open_userprofile)
-canvas.create_window(610, 40, anchor="nw", window=userprofile_button)
+canvas.create_window(770, 40, anchor="nw", window=userprofile_button)
 
 # create log out button
 logout_button = tk.Button(root, bg="#1572D3", text="Log Out", font=("Poppins", 12), command=log_out)
 canvas.create_window(1100, 40, anchor="nw", window=logout_button)
-
 
 # Create input fields and labels for Location, Pickup Date, and Return Date at the bottom of the page
 location_label = tk.Label(root, text="Location", font=("Helvetica", 12), bg="white")

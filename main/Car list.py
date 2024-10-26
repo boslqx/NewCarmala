@@ -7,6 +7,17 @@ import sqlite3
 from datetime import datetime
 import os
 import subprocess
+import sys
+import Session
+
+# Retrieve the logged-in user
+user_data = Session.get_user_session()
+if user_data:
+    user_id = user_data["user_id"]
+    print(f"Logged in as User ID: {user_id}")
+else:
+    print("No user is logged in.")
+
 
 # Global variable for tracking the current page
 current_page = 0
@@ -15,8 +26,11 @@ cars_per_page = 8  # Maximum number of car cards per page
 
 # Function to open the selected button
 def open_home():
-    root.destroy()
-    subprocess.Popen(["python", "Home.py"])
+    process = subprocess.Popen(["python", "Home.py"])
+    print("Become a renter opened with process ID:", process.pid)
+
+    # Delay the close of the current window
+    root.after(300, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
 
 def get_available_cars(location, pickup_date, return_date):
     # Connect to the Carmala database
@@ -223,11 +237,17 @@ def next_page():
     display_cars()
 
 # Function to open the booking list window
-def open_booking_list():
+def open_booking_list(location, pickup_date, dropoff_date):
     booking_window = tk.Toplevel(root)
     booking_window.title("Booking List")
     booking_window.geometry("800x600")
     booking_window.config(bg="#F1F1F1")
+
+    # Display Pickup and Dropoff Dates
+    pickup_label = tk.Label(booking_window, text=f"Pickup Date: {pickup_date}", font=("Poppins", 12), bg="#F1F1F1")
+    pickup_label.pack(pady=(10, 0))
+    dropoff_label = tk.Label(booking_window, text=f"Dropoff Date: {dropoff_date}", font=("Poppins", 12), bg="#F1F1F1")
+    dropoff_label.pack(pady=(0, 10))
 
     # Create a frame for the canvas and scrollbar
     frame_canvas = tk.Frame(booking_window)
@@ -308,14 +328,63 @@ def open_booking_list():
         car_price_label = tk.Label(car_frame, text=f"Price: RM{car[7]}/day", font=("Poppins", 12, 'bold'), bg="#F1F1F1")
         car_price_label.grid(row=6, column=1, sticky="w")
 
-    # Confirm Booking Button
-    confirm_button = tk.Button(booking_window, text="Confirm Booking", font=("Poppins", 12, 'bold'),
-                               bg="#1572D3", fg="white", command=confirm_booking)
+    # Define selected_car_id at the start of open_booking_list
+    selected_car_id = None
+
+    # Inside the open_booking_list function, add a button for each car to select it
+    for car in booking_list:
+        car_id = car[0]  # Assuming the car ID is in the first column
+
+        # Other car details display code here...
+
+        # Add a "Select" button to each car frame
+        select_button = tk.Button(
+            car_frame,
+            text="Select",
+            font=("Poppins", 10),
+            command=lambda car_id=car_id: set_selected_car(car_id)
+        )
+        select_button.grid(row=7, column=1, sticky="w")
+
+    # Define the set_selected_car function to update selected_car_id
+    def set_selected_car(car_id):
+        global selected_car_id
+        selected_car_id = car_id
+        print(f"Selected Car ID: {selected_car_id}")  # For debugging purposes
+
+    # Create the "Confirm Booking" button inside open_booking_list
+    confirm_button = tk.Button(
+        booking_window,
+        text="Confirm Booking",
+        font=("Poppins", 12, 'bold'),
+        bg="#1572D3", fg="white",
+        command=lambda: confirm_booking(pickup_date, dropoff_date)  # Pass the dates as arguments
+    )
     confirm_button.pack(pady=20)
 
-# Function to handle booking confirmation
-def confirm_booking():
-    messagebox.showinfo("Booking Confirmed", "Pending Admin Approval")
+
+# Modify the confirm_booking function to use the selected_car_id
+def confirm_booking(pickup_date, dropoff_date):
+    if selected_car_id is None:
+        print("No car selected!")
+        return
+
+    try:
+        user_id = user_data  # Fetch the current user ID
+
+        # Connect to database and insert booking
+        conn = sqlite3.connect('Carmala.db')
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO Booking (UserID, CarID, PickupDate, DropoffDate, BookingStatus)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (user_id, selected_car_id, pickup_date, dropoff_date, "Pending"))
+        conn.commit()
+        conn.close()
+
+        print("Booking confirmed!")
+    except Exception as e:
+        print(f"Error confirming booking: {e}")
 
 # Create main application window
 root = tk.Tk()
@@ -354,24 +423,57 @@ canvas.create_window(10, 2, anchor="nw", window=logo_button)
 # Bind the image to the open_home function
 logo_button.bind("<Button-1>", lambda e: open_home())
 
+# Retrieve command-line arguments
+if len(sys.argv) == 4:
+    location = sys.argv[1]
+    pickup_date = sys.argv[2]
+    return_date = sys.argv[3]
+else:
+    location = ""
+    pickup_date = ""
+    return_date = ""
+
+# Display values or set them in Entry fields if needed
+print(f"Location: {location}, Pickup Date: {pickup_date}, Return Date: {return_date}")
+
 # Create input fields and labels for Location, Pickup Date, and Return Date
 location_label = tk.Label(root, text="Location", font=("Poppins", 12), bg="#F1F1F1")
 canvas.create_window(170, 40, anchor="nw", window=location_label)
 
 location_entry = tk.Entry(root, font=("Poppins", 12), width=20)
 canvas.create_window(250, 40, anchor="nw", window=location_entry)
+if location:
+    location_entry.insert(0, location)
 
 pickup_label = tk.Label(root, text="Pickup date", font=("Poppins", 12), bg="#F1F1F1")
 canvas.create_window(450, 40, anchor="nw", window=pickup_label)
 
 pickup_date_entry = DateEntry(root, font=("Poppins", 12), width=18, background='darkblue', foreground='white', borderwidth=2)
 canvas.create_window(540, 40, anchor="nw", window=pickup_date_entry)
+if pickup_date:
+    # Convert pickup_date to a datetime.date object
+    pickup_date_obj = datetime.strptime(pickup_date, '%Y-%m-%d').date()
+    pickup_date_entry.set_date(pickup_date_obj)
 
 return_label = tk.Label(root, text="Return date", font=("Poppins", 12), bg="#F1F1F1")
 canvas.create_window(740, 40, anchor="nw", window=return_label)
 
 return_date_entry = DateEntry(root, font=("Poppins", 12), width=18, background='darkblue', foreground='white', borderwidth=2)
 canvas.create_window(830, 40, anchor="nw", window=return_date_entry)
+if return_date:
+    # Convert return_date to a datetime.date object
+    return_date_obj = datetime.strptime(return_date, '%Y-%m-%d').date()
+    return_date_entry.set_date(return_date_obj)
+
+# Button to open booking list window with parameters passed
+open_booking_button = tk.Button(root, text="Open Booking List", font=("Poppins", 12, 'bold'),
+                                bg="#1572D3", fg="white", command=lambda: open_booking_list(
+                                    location_entry.get(),
+                                    pickup_date_entry.get_date(),
+                                    return_date_entry.get_date()
+                                ))
+canvas.create_window(850, 447, anchor="nw", window=open_booking_button)
+
 
 # Create the search button
 search_button = ttk.Button(root, text="Search", command=search_action)
@@ -415,11 +517,6 @@ car_type_dropdown = create_dropdown("Car Type", ["Sedan", "Hatchback", "SUV", "M
 # Create the filter button
 filter_button = tk.Button(root, text="Filter", command=filter_car_data, bg="#1572D3", fg="white", font=("Poppins", 10, 'bold'))
 canvas.create_window(898, 325, anchor="nw", window=filter_button)
-
-# Add the "Go to Booking List" button to the main window
-booking_list_button = tk.Button(root, text="Go to Booking List", font=("Poppins", 12, 'bold'),
-                                bg="#1572D3", fg="white", command=open_booking_list)
-canvas.create_window(850, 447, anchor="nw", window=booking_list_button)
 
 # Create the Back to home button
 back_to_home_button = tk.Button(root, text="Back to home", bg="#1572D3", font="Poppins", fg="white", command=open_home)
