@@ -244,9 +244,9 @@ def open_chatbox():
     chat_window = tk.Toplevel()
     chat_window.title("Chatbot")
 
-    BG_GRAY = "#1572D3"
-    BG_COLOR = "#17202A"
-    TEXT_COLOR = "#EAECEE"
+    BG_GRAY = "#F1F1F1"
+    BG_COLOR = "#F1F1F1"
+    TEXT_COLOR = "black"
     FONT = "Poppins 14"
     FONT_BOLD = "Helvetica 13 bold"
 
@@ -290,7 +290,7 @@ def open_chatbox():
         e.delete(0, tk.END)
 
     # Chat interface setup
-    label1 = tk.Label(chat_window, bg=BG_COLOR, fg=TEXT_COLOR, text="Chat with Us", font=FONT_BOLD, pady=10, width=20, height=1)
+    label1 = tk.Label(chat_window, bg='#1572D3', fg=TEXT_COLOR, text="Chat with Us", font=FONT_BOLD, pady=10, width=20, height=1)
     label1.grid(row=0)
 
     txt = tk.Text(chat_window, bg=BG_COLOR, fg=TEXT_COLOR, font=FONT, width=60)
@@ -299,7 +299,7 @@ def open_chatbox():
     scrollbar = tk.Scrollbar(txt)
     scrollbar.place(relheight=1, relx=0.974)
 
-    e = tk.Entry(chat_window, bg="#2C3E50", fg=TEXT_COLOR, font=FONT, width=55)
+    e = tk.Entry(chat_window, bg="#F1F1F1", fg=TEXT_COLOR, font=FONT, width=55)
     e.grid(row=2, column=0)
 
     send_button = tk.Button(chat_window, text="Send", font=FONT_BOLD, bg=BG_GRAY, command=send)
