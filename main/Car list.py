@@ -139,7 +139,7 @@ def fetch_car_data(capacity_filter=None, transmission_filter=None, features_filt
     # Construct the SQL query based on filters
     query = """
             SELECT * FROM CarList
-            WHERE CarID NOT IN (
+            WHERE CarID NOT IN ( 
                 SELECT CarID FROM Booking WHERE BookingStatus IN ('Pending', 'Approved')
             )
         """
