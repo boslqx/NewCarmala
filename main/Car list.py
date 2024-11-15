@@ -30,34 +30,36 @@ def open_home():
     print("Become a renter opened with process ID:", process.pid)
 
     # Delay the close of the current window
-    root.after(300, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
+    root.after(400, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
 
-def get_available_cars(location, pickup_date, return_date):
-    # Connect to the Carmala database
-    conn = sqlite3.connect('Carmala.db')
-    cursor = conn.cursor()
+def get_available_cars(location, pickup_date, dropoff_date):
+    try:
+        conn = sqlite3.connect('Carmala.db')
+        cursor = conn.cursor()
 
-    # Format dates to match database format (assuming they are stored as text)
-    pickup_date = datetime.strptime(pickup_date, '%Y-%m-%d').date()
-    return_date = datetime.strptime(return_date, '%Y-%m-%d').date()
+        # Convert to date only if pickup_date and dropoff_date are strings
+        if isinstance(pickup_date, str):
+            pickup_date = datetime.strptime(pickup_date, "%Y-%m-%d").date()
+        if isinstance(dropoff_date, str):
+            dropoff_date = datetime.strptime(dropoff_date, "%Y-%m-%d").date()
 
-    # Query to get cars that are available in the specified location
-    # and are not booked during the specified date range
-    query = """
-        SELECT * FROM CarList
-        WHERE LOWER(CarLocation) = LOWER(?)
-        AND CarID NOT IN (
-            SELECT CarID FROM BookingHistory
-            WHERE (PickupDate <= ? AND DropoffDate >= ?)
-        )
-    """
+        # Fetch cars from CARTABLE that are available in the given location and date range
+        cursor.execute('''
+            SELECT c.CarID, c.CarName, c.CarLocation, c.CarCapacity, c.CarFueltype,
+                   c.CarTransmission, c.CarFeatures, c.CarPrice, c.CarImage
+            FROM CarList AS c
+            LEFT JOIN Booking AS b ON c.CarID = b.CarID
+            WHERE c.CarLocation = ?
+              AND (b.PickupDate IS NULL OR b.DropoffDate IS NULL 
+                   OR b.DropoffDate < ? OR b.PickupDate > ?)
+        ''', (location, pickup_date, dropoff_date))
 
-    cursor.execute(query, (location, return_date, pickup_date))
-    available_cars = cursor.fetchall()
-
-    # Close the database connection
-    conn.close()
-    return available_cars
+        available_cars = cursor.fetchall()
+        conn.close()
+        return available_cars
+    except Exception as e:
+        print(f"Error fetching cars: {e}")
+        return []
 
 # Functionality for the Search button
 def search_action():
@@ -87,8 +89,8 @@ booking_list = []
 
 # Function to add a car to the booking list
 def add_to_booking_list(car_data):
-    # Check if the car is already in the booking list
-    if car_data not in booking_list:
+    car_id = car_data[0]  # CarID is assumed to be the first field
+    if car_id not in [car[0] for car in booking_list]:  # check by CarID
         booking_list.append(car_data)
         messagebox.showinfo("Success", f"{car_data[1]} has been added to the booking list.")
     else:
@@ -135,7 +137,12 @@ def fetch_car_data(capacity_filter=None, transmission_filter=None, features_filt
     cursor = connection.cursor()
 
     # Construct the SQL query based on filters
-    query = "SELECT * FROM CarList WHERE 1=1"
+    query = """
+            SELECT * FROM CarList
+            WHERE CarID NOT IN (
+                SELECT CarID FROM Booking WHERE BookingStatus IN ('Pending', 'Approved')
+            )
+        """
     params = []
 
     if capacity_filter:
@@ -236,18 +243,16 @@ def next_page():
     current_page += 1
     display_cars()
 
-# Function to open the booking list window
-def open_booking_list(location, pickup_date, dropoff_date):
-    booking_window = tk.Toplevel(root)
-    booking_window.title("Booking List")
-    booking_window.geometry("800x600")
-    booking_window.config(bg="#F1F1F1")
 
-    # Display Pickup and Dropoff Dates
-    pickup_label = tk.Label(booking_window, text=f"Pickup Date: {pickup_date}", font=("Poppins", 12), bg="#F1F1F1")
-    pickup_label.pack(pady=(10, 0))
-    dropoff_label = tk.Label(booking_window, text=f"Dropoff Date: {dropoff_date}", font=("Poppins", 12), bg="#F1F1F1")
-    dropoff_label.pack(pady=(0, 10))
+# Function to open booking list with selectable cars
+def open_booking_list(user_id, pickup_date, dropoff_date):
+    # Initialize the booking list window
+    booking_window = tk.Toplevel()
+    booking_window.title("Booking List")
+    booking_window.geometry("800x500")
+
+    # Dictionary to track selected cars
+    selected_cars = {}
 
     # Create a frame for the canvas and scrollbar
     frame_canvas = tk.Frame(booking_window)
@@ -265,7 +270,7 @@ def open_booking_list(location, pickup_date, dropoff_date):
     canvas.configure(yscrollcommand=scrollbar.set)
 
     # Create a frame inside the canvas to contain the car frames
-    content_frame = tk.Frame(canvas, bg="#F1F1F1", width=500)
+    content_frame = tk.Frame(canvas, bg="#F1F1F1")
     content_frame_id = canvas.create_window((0, 0), window=content_frame, anchor="nw")
 
     # Update the scrollregion each time the content changes
@@ -281,10 +286,9 @@ def open_booking_list(location, pickup_date, dropoff_date):
 
     canvas.bind_all("<MouseWheel>", on_mousewheel)
 
-    # Add car frames to the content frame
     for car in booking_list:
         # Create a frame for each car
-        car_frame = tk.Frame(content_frame, bg="#F1F1F1", relief=tk.RIDGE, borderwidth=2, width=600)
+        car_frame = tk.Frame(content_frame, bg="#F1F1F1", relief=tk.RIDGE, borderwidth=2)
         car_frame.pack(padx=10, pady=10, fill=tk.X)
 
         # Load car image
@@ -328,68 +332,61 @@ def open_booking_list(location, pickup_date, dropoff_date):
         car_price_label = tk.Label(car_frame, text=f"Price: RM{car[7]}/day", font=("Poppins", 12, 'bold'), bg="#F1F1F1")
         car_price_label.grid(row=6, column=1, sticky="w")
 
-    # Define selected_car_id at the start of open_booking_list
-    selected_car_id = None
+        # Add a checkbutton to select the car
+        car_selected_var = tk.BooleanVar()  # Variable to track if car is selected
+        select_checkbutton = tk.Checkbutton(car_frame, text="Select for Booking", variable=car_selected_var,
+                                            bg="#F1F1F1")
+        select_checkbutton.grid(row=0, column=2, sticky="e", padx=10)
+        selected_cars[car[0]] = car_selected_var  # Track the selection state with CarID as key
 
-    # Inside the open_booking_list function, add a button for each car to select it
-    for car in booking_list:
-        car_id = car[0]  # Assuming the car ID is in the first column
+        # Add a remove button with confirmation
+        def remove_car(car_id, frame):
+            if messagebox.askyesno("Remove Car", "Are you sure you want to remove this car from the booking list?"):
+                frame.pack_forget()  # Hide the frame if removed
+                selected_cars.pop(car_id, None)  # Remove from selected list if present
 
-        # Other car details display code here...
+        remove_button = tk.Button(car_frame, text="Remove",
+                                  command=lambda cid=car[0], frame=car_frame: remove_car(cid, frame),
+                                  bg="#FF5C5C", fg="white")
+        remove_button.grid(row=0, column=3, padx=10)
 
-        # Add a "Select" button to each car frame
-        select_button = tk.Button(
-            car_frame,
-            text="Select",
-            font=("Poppins", 10),
-            command=lambda car_id=car_id: set_selected_car(car_id)
-        )
-        select_button.grid(row=7, column=1, sticky="w")
+    # Confirm booking for selected cars
+    def confirm_booking():
+        # Collect selected car IDs
+        selected_car_ids = [car_id for car_id, var in selected_cars.items() if var.get()]
 
-    # Define the set_selected_car function to update selected_car_id
-    def set_selected_car(car_id):
-        global selected_car_id
-        selected_car_id = car_id
-        print(f"Selected Car ID: {selected_car_id}")  # For debugging purposes
+        if not selected_car_ids:
+            messagebox.showinfo("No Car Selected", "Please select at least one car to book.")
+            return
 
-    # Create the "Confirm Booking" button inside open_booking_list
-    confirm_button = tk.Button(
-        booking_window,
-        text="Confirm Booking",
-        font=("Poppins", 12, 'bold'),
-        bg="#1572D3", fg="white",
-        command=lambda: confirm_booking(pickup_date, dropoff_date)  # Pass the dates as arguments
-    )
-    confirm_button.pack(pady=20)
-
-
-# Modify the confirm_booking function to use the selected_car_id
-def confirm_booking(pickup_date, dropoff_date):
-    if selected_car_id is None:
-        print("No car selected!")
-        return
-
-    try:
-        user_id = user_data  # Fetch the current user ID
-
-        # Connect to database and insert booking
+        # Insert bookings into the Booking table
         conn = sqlite3.connect('Carmala.db')
         cursor = conn.cursor()
-        cursor.execute('''
-            INSERT INTO Booking (UserID, CarID, PickupDate, DropoffDate, BookingStatus)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (user_id, selected_car_id, pickup_date, dropoff_date, "Pending"))
+
+        for car_id in selected_car_ids:
+            # Insert each booking, set status to 'Pending'
+            cursor.execute("""
+                INSERT INTO Booking (UserID, CarID, PickupDate, DropoffDate, BookingStatus)
+                VALUES (?, ?, ?, ?, ?)
+            """, (user_id, car_id, pickup_date, dropoff_date, 'Pending'))
+
+        # Commit and close the database connection
         conn.commit()
         conn.close()
 
-        print("Booking confirmed!")
-    except Exception as e:
-        print(f"Error confirming booking: {e}")
+        messagebox.showinfo("Booking Confirmed", "Your booking(s) have been submitted for approval.")
+        booking_window.destroy()  # Close the booking window after confirmation
+
+    # Add the Confirm Booking button
+    confirm_button = tk.Button(booking_window, text="Confirm Booking", bg='#1572D3', fg='white', font=("Poppins", 12,"bold"), command=confirm_booking)
+    confirm_button.pack(pady=10)
+
+
 
 # Create main application window
 root = tk.Tk()
 root.title("Car List")
-root.config(bg="#F1F1F1")
+root.config(bg="white")
 root.geometry("1120x700")
 
 # Create a canvas to hold the background and other widgets in the Home tab
@@ -467,11 +464,7 @@ if return_date:
 
 # Button to open booking list window with parameters passed
 open_booking_button = tk.Button(root, text="Open Booking List", font=("Poppins", 12, 'bold'),
-                                bg="#1572D3", fg="white", command=lambda: open_booking_list(
-                                    location_entry.get(),
-                                    pickup_date_entry.get_date(),
-                                    return_date_entry.get_date()
-                                ))
+                                bg="#1572D3", fg="white", command=lambda: open_booking_list(user_id, pickup_date, return_date))
 canvas.create_window(850, 447, anchor="nw", window=open_booking_button)
 
 
@@ -519,8 +512,8 @@ filter_button = tk.Button(root, text="Filter", command=filter_car_data, bg="#157
 canvas.create_window(898, 325, anchor="nw", window=filter_button)
 
 # Create the Back to home button
-back_to_home_button = tk.Button(root, text="Back to home", bg="#1572D3", font="Poppins", fg="white", command=open_home)
-canvas.create_window(875, 494, anchor="nw", window=back_to_home_button)
+back_to_home_button = tk.Button(root, text="Back to home", bg="#1572D3", font=("Poppins",12,"bold"), fg="white", command=open_home)
+canvas.create_window(872, 494, anchor="nw", window=back_to_home_button)
 
 # Fetch and display all car data initially
 filter_car_data()

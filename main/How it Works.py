@@ -17,8 +17,11 @@ else:
 
 # Function to open the selected button
 def open_home():
-    root.destroy()
-    os.system('python Home.py')
+    process = subprocess.Popen(["python", "Home.py"])
+    print("Home opened with process ID:", process.pid)
+
+    # Delay the close of the current window
+    root.after(400, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
 
 # Function to open the selected button
 def open_userprofile():
@@ -26,7 +29,7 @@ def open_userprofile():
     print("User Profile opened with process ID:", process.pid)
 
     # Delay the close of the current window
-    root.after(300, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
+    root.after(400, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
 
 # Function to open the script when the "How it Works" button is clicked
 def open_howitworks():
@@ -34,7 +37,7 @@ def open_howitworks():
     print("How it Works opened with process ID:", process.pid)
 
     # Delay the close of the current window
-    root.after(300, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
+    root.after(400, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
 
 # Function to open the script when the "Become a Renter" button is clicked
 def open_becomearenter():
@@ -42,7 +45,7 @@ def open_becomearenter():
     print("Become a renter opened with process ID:", process.pid)
 
     # Delay the close of the current window
-    root.after(300, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
+    root.after(400, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
 
 # Create a window with a specific geometry
 root = tk.Tk()
@@ -66,20 +69,20 @@ canvas.configure(yscrollcommand=scrollbar.set)
 canvas.bind('<Configure>', lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
 
 # create home button
-home_button = tk.Button(root, bg="#1572D3", text="Home", font=("Poppins", 12), command=open_home)
+home_button = tk.Button(root, bg="#1572D3", text="Home", fg="white",font=("Poppins",12,"bold"), command=open_home)
 canvas.create_window(200, 40, anchor="nw", window=home_button)
 
 # create become a renter button
-become_renter_button = tk.Button(root, bg="#1572D3", text="Become a Renter", font=("Poppins", 12), command=open_becomearenter)
+become_renter_button = tk.Button(root, bg="#1572D3", text="Become a Renter", fg="white",font=("Poppins",12,"bold"), command=open_becomearenter)
 canvas.create_window(300, 40, anchor="nw", window=become_renter_button)
 
 # create how it works button
-how_it_works_button = tk.Button(root, bg="#1572D3", text="How It Works", font=("Poppins", 12), command=open_howitworks)
+how_it_works_button = tk.Button(root, bg="#1572D3", text="How It Works", fg="white",font=("Poppins",12,"bold"), command=open_howitworks)
 canvas.create_window(470, 40, anchor="nw", window=how_it_works_button)
 
 # create profile button
-userprofile_button = tk.Button(root, bg="#1572D3", text="Profile", font=("Poppins", 12), command=open_userprofile)
-canvas.create_window(600, 40, anchor="nw", window=userprofile_button)
+userprofile_button = tk.Button(root, bg="#1572D3", text="Profile", fg="white",font=("Poppins",12,"bold"), command=open_userprofile)
+canvas.create_window(610, 40, anchor="nw", window=userprofile_button)
 
 # Create another frame inside the canvas to hold the images
 image_frame = tk.Frame(canvas)

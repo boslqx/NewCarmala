@@ -223,7 +223,7 @@ entry_password.place(x=63, y=275)
 add_placeholder_password(entry_password, "Enter your password")
 
 # Login button in the login frame
-button_login = tk.Button(login_frame, text="Log in", font="Poppins", command=login, bg="#1572D3")
+button_login = tk.Button(login_frame, text="Log in",  fg="white",font=("Poppins",12,"bold"), command=login, bg="#1572D3")
 button_login.place(x=180, y=340)
 
 # Forgot password and register labels in the login frame
@@ -292,11 +292,11 @@ label_confirm_password_note = tk.Label(registration_frame, text="Password should
 label_confirm_password_note.place(x=61, y=460)
 
 # Register button
-button_register = tk.Button(registration_frame, text="Register", font="Poppins",command=register_user, bg="#1572D3")
+button_register = tk.Button(registration_frame, text="Register",  fg="white",font=("Poppins",12,"bold"),command=register_user, bg="#1572D3")
 button_register.place(x=170, y=500)
 
 # Back to login button
-button_back_to_login = tk.Button(registration_frame, text="Back to Login",  font="Poppins",
+button_back_to_login = tk.Button(registration_frame, text="Back to Login",  fg="white",font=("Poppins",12,"bold"),
                                  command=lambda: [registration_frame.pack_forget(),
                                                   login_frame.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)],
                                  bg="#1572D3")

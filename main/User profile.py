@@ -5,6 +5,7 @@ import sqlite3
 import subprocess
 import Session
 import os
+import io
 
 # Retrieve the logged-in user
 user_data = Session.get_user_session()
@@ -14,50 +15,15 @@ if user_data:
 else:
     print("No user is logged in.")
 
-
+# Global variables for file paths
+profile_picture_path = None
+driving_license_path = None
 
 # Function to convert image file to BLOB (binary data)
 def convert_image_to_blob(file_path):
     with open(file_path, 'rb') as file:
         blob_data = file.read()
     return blob_data
-
-
-# Function to open the user profile window
-def open_user_profile():
-    if user_data:  # Ensure a user is logged in
-        profile_window = tk.Tk()
-        profile_window.title("User Profile")
-
-        user_id = user_data["user_id"]
-
-        # Fetch user details from the database using the logged_in_user's ID
-        conn = sqlite3.connect('Carmala.db')
-        cursor = conn.cursor()
-        cursor.execute('SELECT Email, Username, Gender, Country FROM UserAccount WHERE UserID = ?', (user_id,))
-        user_details = cursor.fetchone()
-        conn.close()
-
-        if user_details:
-            email = user_details[0]
-            username = user_details[1]
-            gender = user_details[2]
-            country = user_details[3]
-
-            # Display messagebox with username and email
-            messagebox.showinfo("User Details", f"Username: {username}\nEmail: {email}")
-
-            # Populate fields with the user's existing details
-            username_entry.insert(0, username)
-            email_entry.insert(0, email)
-            gender_combobox.set(gender if gender else "Select Gender")
-            country_entry.insert(0, country if country else "")
-
-        else:
-            messagebox.showerror("Error", "User details not found.")
-
-        profile_window.mainloop()
-
 
 # Function to save user data to the database
 def save_to_database():
@@ -86,6 +52,105 @@ def save_to_database():
     conn.close()
 
     messagebox.showinfo("Success", "User profile updated successfully!")
+    toggle_edit(False)  # Disable editing after saving
+
+# Function to load user data into fields
+def load_user_data():
+    conn = sqlite3.connect('Carmala.db')
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT Username, Email, Gender, Country, IdentificationNumber, ProfilePicture, DrivingLicense FROM UserAccount WHERE UserID = ?",
+        (user_id,))
+    user_info = cursor.fetchone()
+    conn.close()
+
+    print("Fetched user data:", user_info)  # Debugging output
+
+    if user_info:
+        # Temporarily enable editing to populate the fields, then disable again if needed
+        username_entry.config(state='normal')
+        email_entry.config(state='normal')
+        country_entry.config(state='normal')
+        id_entry.config(state='normal')
+
+        # Clear existing values and insert fetched data
+        username_entry.delete(0, tk.END)
+        username_entry.insert(0, user_info[0] or "")
+
+        email_entry.delete(0, tk.END)
+        email_entry.insert(0, user_info[1] or "")
+
+        gender_combobox.set(user_info[2] or "")
+
+        country_entry.delete(0, tk.END)
+        country_entry.insert(0, user_info[3] or "")
+
+        id_entry.delete(0, tk.END)
+        id_entry.insert(0, user_info[4] or "")
+
+        # Disable editing if not in edit mode
+        username_entry.config(state='readonly')
+        email_entry.config(state='readonly')
+        country_entry.config(state='readonly')
+        id_entry.config(state='readonly')
+
+        # Set placeholders if profile picture or driving license is missing
+        placeholder_img = Image.new('RGB', (100, 100), color='gray')  # Creates a gray square placeholder image
+        placeholder_img_display = ImageTk.PhotoImage(placeholder_img)
+
+        # Display profile picture
+        if user_info[5]:  # If profile picture exists
+            profile_img_data = io.BytesIO(user_info[5])
+            profile_img = Image.open(profile_img_data)
+            profile_img = profile_img.resize((100, 100), Image.LANCZOS)
+            profile_img_display = ImageTk.PhotoImage(profile_img)
+        else:  # If no profile picture, use placeholder
+            profile_img_display = placeholder_img_display
+
+        # Update the profile picture label with the actual image or placeholder
+        profile_picture_label.config(image=profile_img_display)
+        profile_picture_label.image = profile_img_display  # Keep a reference to prevent garbage collection
+
+        # Display driving license
+        if user_info[6]:  # If driving license image exists
+            license_img_data = io.BytesIO(user_info[6])
+            license_img = Image.open(license_img_data)
+            license_img = license_img.resize((100, 100), Image.LANCZOS)
+            license_img_display = ImageTk.PhotoImage(license_img)
+        else:  # If no driving license, use placeholder
+            license_img_display = placeholder_img_display
+
+        # Update the driving license label with the actual image or placeholder
+        driving_license_label.config(image=license_img_display)
+        driving_license_label.image = license_img_display  # Keep a reference to prevent garbage collection
+    else:
+        messagebox.showwarning("Warning", "User information could not be retrieved.")
+
+
+# Function to toggle editing
+def toggle_edit(state):
+    username_entry.config(state='normal' if state else 'readonly')
+    email_entry.config(state='normal' if state else 'readonly')
+    gender_combobox.config(state='normal' if state else 'readonly')
+    country_entry.config(state='normal' if state else 'readonly')
+    id_entry.config(state='normal' if state else 'readonly')
+    upload_profile_btn.config(state='normal' if state else 'disabled')
+    upload_license_btn.config(state='normal' if state else 'disabled')
+    save_btn.config(state='normal' if state else 'disabled')
+    edit_btn.config(state='disabled' if state else 'normal')
+
+# Functions to upload files
+def upload_profile_picture():
+    global profile_picture_path
+    file_path = filedialog.askopenfilename(title="Select Profile Picture", filetypes=[("Image Files", "*.png;*.jpg;*.jpeg")])
+    if file_path:
+        profile_picture_path = file_path
+
+def upload_driving_license():
+    global driving_license_path
+    file_path = filedialog.askopenfilename(title="Select Driving License", filetypes=[("Image Files", "*.png;*.jpg;*.jpeg")])
+    if file_path:
+        driving_license_path = file_path
 
 # Function to log out and return to login window
 def log_out():
@@ -95,8 +160,11 @@ def log_out():
 
 # Function to open the selected button
 def open_home():
-    root.destroy()
-    os.system('python Home.py')
+    process = subprocess.Popen(["python", "Home.py"])
+    print("Home opened with process ID:", process.pid)
+
+    # Delay the close of the current window
+    root.after(400, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
 
 # Function to open the script when the "How it Works" button is clicked
 def open_howitworks():
@@ -104,7 +172,7 @@ def open_howitworks():
     print("How it Works opened with process ID:", process.pid)
 
     # Delay the close of the current window
-    root.after(300, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
+    root.after(400, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
 
 # Function to open the script when the "Become a Renter" button is clicked
 def open_becomearenter():
@@ -112,119 +180,94 @@ def open_becomearenter():
     print("Become a renter opened with process ID:", process.pid)
 
     # Delay the close of the current window
-    root.after(300, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
+    root.after(400, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
 # Function to open the selected button
 def open_bookingdetails():
     process = subprocess.Popen(["python", "Booking details.py"])
     print("Booking details opened with process ID:", process.pid)
 
     # Delay the close of the current window
-    root.after(300, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
-
-# Function to open file dialog and select profile picture
-def select_profile_picture():
-    global profile_picture_path
-    profile_picture_path = filedialog.askopenfilename(title="Select Profile Picture",
-                                                      filetypes=[("Image Files", "*.png;*.jpg;*.jpeg")])
+    root.after(400, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
 
 
-# Function to open file dialog and select driving license
-def select_driving_license():
-    global driving_license_path
-    driving_license_path = filedialog.askopenfilename(title="Select Driving License", filetypes=[("Image Files", "*.png;*.jpg;*.jpeg")])
-
-
-
-# Create main application window
+# GUI setup
 root = tk.Tk()
-root.title(f"User Profile")
-root.geometry("1100x700")  # Adjust window size to fit the design
+root.title("User Profile")
+root.geometry("1100x700")
 
-# Add logo image to the canvas
+# Create main canvas
 canvas = tk.Canvas(root, width=1000, height=700)
 canvas.pack(fill='both', expand=True)
 
-# Add logo image to the canvas and make it a clickable button
+# Load logo and add it to the canvas
 logo_path = r"C:\Users\User\OneDrive\Pictures\Saved Pictures\cleaned_image.png"
 logo_img = Image.open(logo_path)
 logo_img = logo_img.resize((150, 100), Image.LANCZOS)
 logo_photo = ImageTk.PhotoImage(logo_img)
-
-# Place the image on the canvas
 logo_button = tk.Label(root, image=logo_photo, cursor="hand2", bg="#F1F1F1")
 canvas.create_window(10, 2, anchor="nw", window=logo_button)
-
-# Bind the image to the open_home function
 logo_button.bind("<Button-1>", lambda e: open_home())
 
-# create become a renter button
-become_renter_button = tk.Button(root, bg="#1572D3", text="Become a Renter", font=("Poppins", 12), command=open_becomearenter)
+# Header buttons
+become_renter_button = tk.Button(root, bg="#1572D3", text="Become a Renter", fg="white", font=("Poppins", 12, "bold"), command=open_becomearenter)
 canvas.create_window(200, 40, anchor="nw", window=become_renter_button)
 
-# create how it works button
-how_it_works_button = tk.Button(root, bg="#1572D3", text="How It Works", font=("Poppins", 12), command=open_howitworks)
+how_it_works_button = tk.Button(root, bg="#1572D3", text="How It Works", fg="white", font=("Poppins", 12, "bold"), command=open_howitworks)
 canvas.create_window(370, 40, anchor="nw", window=how_it_works_button)
 
-# create user profile button
-# create Booking details button
-bookingdetails_button = tk.Button(root, bg="#1572D3", text="Booking Details", font=("Poppins", 12), command=open_bookingdetails)
+bookingdetails_button = tk.Button(root, bg="#1572D3", text="Booking Details", fg="white", font=("Poppins", 12, "bold"), command=open_bookingdetails)
 canvas.create_window(510, 40, anchor="nw", window=bookingdetails_button)
 
-# create Log out button
-log_out_button = tk.Button(root, bg="#1572D3", text="Log Out", font=("Poppins", 12), command=log_out)
+log_out_button = tk.Button(root, bg="#1572D3", text="Log Out", fg="white", font=("Poppins", 12, "bold"), command=log_out)
 canvas.create_window(960, 40, anchor="nw", window=log_out_button)
 
+# User information fields
+username_entry = ttk.Entry(root, width=40)
+email_entry = ttk.Entry(root, width=40)
+gender_combobox = ttk.Combobox(root, values=["Male", "Female", "Other"], width=40, state='readonly')
+country_entry = ttk.Entry(root, width=40)
+id_entry = ttk.Entry(root, width=40)
+
+# Profile picture and driving license image labels
+profile_picture_label = tk.Label(root, bg="white", width=100, height=100)
+driving_license_label = tk.Label(root, bg="white", width=150, height=100)
+
 # Add blue rectangle (header) decoration
-canvas.create_rectangle(0, 120, 1500, 170, fill="#1572D3", outline="")
+canvas.create_rectangle(0, 120, 1500, 260, fill="#1572D3", outline="")
 
-# Profile picture label
-profile_pic_label = tk.Label(root, bg="#D9D9D9", cursor="hand2", width=20, height=10)
-canvas.create_window(215, 230, window=profile_pic_label)
-profile_pic_label.bind("<Button-1>", lambda e: select_profile_picture())
+# Layout
+canvas.create_window(200, 300, window=ttk.Label(root, text="Username", font=("Poppins", 10)))
+canvas.create_window(315, 330, window=username_entry,width=300, height=40)
+canvas.create_window(700, 300, window=ttk.Label(root, text="Email", font=("Poppins", 10)))
+canvas.create_window(830, 330, window=email_entry,width=300, height=40)
+canvas.create_window(195, 400, window=ttk.Label(root, text="Gender", font=("Poppins", 10)))
+canvas.create_window(325, 430, window=gender_combobox,width=300, height=40)
+canvas.create_window(700, 400, window=ttk.Label(root, text="Country", font=("Poppins", 10)))
+canvas.create_window(825, 430, window=country_entry,width=300, height=40)
+canvas.create_window(710, 500, window=ttk.Label(root, text="ID Number", font=("Poppins", 10)))
+canvas.create_window(830, 530, window=id_entry,width=300, height=40)
 
-display_profilepic = tk.Label(root, text="Profile Picture", font=("Poppins",14))
-canvas.create_window(350,190, window=display_profilepic)
+# Display profile picture and driving license images
+canvas.create_window(220, 190, window=profile_picture_label)
+canvas.create_window(240, 550, window=driving_license_label)
 
-# Username field
-username_label = tk.Label(root, text="Username", font=("Poppins", 12))
-canvas.create_window(200, 350, window=username_label)
-username_entry = tk.Entry(root, width=40)
-canvas.create_window(400, 350, window=username_entry)
+# Buttons for uploading files
+upload_profile_btn = ttk.Button(root, text="Upload Profile Picture", command=upload_profile_picture)
+canvas.create_window(340, 195, window=upload_profile_btn)
+upload_license_btn = ttk.Button(root, text="Upload Driving License", command=upload_driving_license)
+canvas.create_window(390, 550, window=upload_license_btn)
 
-# Email field
-email_label = tk.Label(root, text="Email", font=("Poppins", 12))
-canvas.create_window(700, 350, window=email_label)
-email_entry = tk.Entry(root, width=40)
-canvas.create_window(900, 350, window=email_entry)
 
-# Gender combobox
-gender_label = tk.Label(root, text="Gender", font=("Poppins", 12))
-canvas.create_window(200, 420, window=gender_label)
-gender_combobox = ttk.Combobox(root, values=["Male", "Female", "Others"], state="readonly", width=38)
-gender_combobox.set("Select Gender")
-canvas.create_window(400, 420, window=gender_combobox)
 
-# Country field
-country_label = tk.Label(root, text="Country", font=("Poppins", 12))
-canvas.create_window(700, 420, window=country_label)
-country_entry = tk.Entry(root, width=40)
-canvas.create_window(900, 420, window=country_entry)
 
-# Driving license upload
-license_label = tk.Label(root, text="Driving License", font=("Poppins", 12))
-canvas.create_window(180, 500, window=license_label)
-upload_license_button = tk.Button(root, text="Upload picture", command=select_driving_license)
-canvas.create_window(400, 500, window=upload_license_button)
+# Edit and Save buttons
+edit_btn = tk.Button(root, width=10, height=2,text="Edit", bg="#1572D3", fg="white", font=("Arial", 12, "bold"),command=lambda: toggle_edit(True))
+save_btn = tk.Button(root, width=10, height=2,text="Save", bg="#1572D3", fg="white", font=("Arial", 12, "bold"), command=save_to_database)
+canvas.create_window(850, 200, window=edit_btn)
+canvas.create_window(980, 200, window=save_btn)
 
-# Identification number entry
-id_label = tk.Label(root, text="Identification/Passport Number", font=("Poppins", 12))
-canvas.create_window(660, 500, window=id_label)
-id_entry = tk.Entry(root, width=40)
-canvas.create_window(900, 500, window=id_entry)
-
-# Save button
-save_button = tk.Button(root, text="Save", width=10, height=2, command=save_to_database, bg="#1572D3", fg="white",
-                        font=("Arial", 12, "bold"))
-canvas.create_window(550, 600, window=save_button)
+# Initialize UI
+toggle_edit(False)  # Disable editing by default
+load_user_data()  # Load the user's data into the fields
 
 root.mainloop()

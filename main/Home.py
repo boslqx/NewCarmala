@@ -54,7 +54,7 @@ def open_car_list(location, pickup_date, return_date):
     try:
         # Call the Car list.py script with the provided arguments directly
         subprocess.Popen(["python", "Car list.py", location, pickup_date, return_date])
-        root.after(300, root.destroy)
+        root.after(400, root.destroy)
     except Exception as e:
         messagebox.showerror("Error", f"Failed to open Car List: {e}")
 
@@ -101,7 +101,7 @@ def open_userprofile():
     print("User Profile opened with process ID:", process.pid)
 
     # Delay the close of the current window
-    root.after(300, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
+    root.after(400, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
 
 # Function to open the script when the "How it Works" button is clicked
 def open_howitworks():
@@ -109,7 +109,7 @@ def open_howitworks():
     print("How it Works opened with process ID:", process.pid)
 
     # Delay the close of the current window
-    root.after(300, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
+    root.after(400, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
 
 # Function to open the script when the "Become a Renter" button is clicked
 def open_becomearenter():
@@ -117,7 +117,7 @@ def open_becomearenter():
     print("Become a renter opened with process ID:", process.pid)
 
     # Delay the close of the current window
-    root.after(300, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
+    root.after(400, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
 
 # Function to open the script when the "Become a Renter" button is clicked
 def open_bookingdetails():
@@ -125,7 +125,7 @@ def open_bookingdetails():
     print("Booking details opened with process ID:", process.pid)
 
     # Delay the close of the current window
-    root.after(300, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
+    root.after(400, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
 
 # Function to handle logout
 def log_out():
@@ -133,6 +133,177 @@ def log_out():
     root.destroy()
     subprocess.Popen(["python", "Login.py"])
 
+# Rating window function and button
+def submit_rating():
+    # Get the selected rating (1 to 5)
+    rating = rating_var.get()
+
+    # Get the optional comment (if any)
+    comment = comment_entry.get("1.0", tk.END).strip()
+
+    # Retrieve the logged-in user ID (assuming the session data is available)
+    logged_in_user = Session.get_user_session()
+    if not logged_in_user:
+        messagebox.showwarning("Not Logged In", "Please log in to submit a rating.")
+        return
+
+    user_id = logged_in_user.get("user_id")
+
+    # Insert rating data into the database
+    if rating > 0:
+        try:
+            # Connect to the Carmala database
+            conn = sqlite3.connect("Carmala.db")
+            cursor = conn.cursor()
+
+            # Insert the rating into the Rating table
+            cursor.execute("""
+                INSERT INTO Rating (UserID, Stars, Comment) 
+                VALUES (?, ?, ?)
+            """, (user_id, rating, comment))
+
+            # Commit the changes and close the connection
+            conn.commit()
+            conn.close()
+
+            # Notify the user and clear the form
+            messagebox.showinfo("Thank You", "Your rating has been submitted!")
+            print(f"Rating: {rating} star(s)")
+            print(f"Comment: {comment if comment else 'No comment provided'}")
+
+            # Clear the rating and comment fields
+            rating_var.set(0)
+            comment_entry.delete("1.0", tk.END)
+            for star in stars:
+                star.config(text="☆")
+
+        except sqlite3.Error as e:
+            messagebox.showerror("Database Error", f"An error occurred: {e}")
+    else:
+        messagebox.showwarning("No Rating", "Please select a rating before submitting.")
+
+
+# Star button click function
+def select_star(rating):
+    rating_var.set(rating)
+    # Update star display based on selected rating
+    for i in range(1, 6):
+        stars[i - 1].config(text="★" if i <= rating else "☆")
+
+
+def open_rating_window():
+    global rating_window, rating_var, comment_entry, stars
+    logged_in_user = Session.get_user_session()
+
+    if logged_in_user:
+        user_id = logged_in_user.get("user_id")
+        print(f"Logged in user ID: {user_id}")
+        # Proceed with loading user-specific data or UI
+    else:
+        print("No user is logged in.")
+        # Handle the case when no user is logged in
+
+    # Create a new top-level window for the rating UI
+    rating_window = tk.Toplevel(root)
+    rating_window.title("Rate Your Experience")
+    rating_window.geometry("500x300")
+
+    # Label for the rating window
+    rating_label = tk.Label(rating_window, text="Please rate your experience:", font=("Arial", 14))
+    rating_label.pack(pady=10)
+
+    # Variable to store the rating (1-5)
+    rating_var = tk.IntVar(value=0)
+
+    # Frame for the star rating
+    star_frame = tk.Frame(rating_window)
+    star_frame.pack(pady=10)
+
+    # Create clickable star labels for rating
+    stars = []
+    for i in range(1, 6):
+        star_label = tk.Label(star_frame, text="☆", font=("Arial", 24), fg="gold")
+        star_label.grid(row=0, column=i - 1, padx=5)
+        star_label.bind("<Button-1>", lambda e, i=i: select_star(i))
+        stars.append(star_label)
+
+    # Label and entry box for additional comments
+    comment_label = tk.Label(rating_window, text="Leave a comment (optional):", font=("Arial", 10))
+    comment_label.pack(pady=10)
+    comment_entry = tk.Text(rating_window, height=4, width=30)
+    comment_entry.pack(pady=5)
+
+    # Submit button to submit the rating and comment
+    submit_button = tk.Button(rating_window, text="Submit", command=submit_rating, bg="#1572D3", fg="white",
+                              font=("Poppins", 10, "bold"))
+    submit_button.pack(pady=10)
+
+# Function to handle chat button click
+def open_chatbox():
+    # Chat window
+    chat_window = tk.Toplevel()
+    chat_window.title("Chatbot")
+
+    BG_GRAY = "#1572D3"
+    BG_COLOR = "#17202A"
+    TEXT_COLOR = "#EAECEE"
+    FONT = "Poppins 14"
+    FONT_BOLD = "Helvetica 13 bold"
+
+    # Send function for chat responses
+    def send():
+        user_input = e.get()
+        txt.insert(tk.END, "\nYou -> " + user_input)
+
+        user_message = user_input.lower()
+
+        if user_message == "hello":
+            txt.insert(tk.END, "\nBot -> Hello! Welcome to GoCar. How can I assist you today?")
+        elif user_message in ["hi", "hii", "hiiii"]:
+            txt.insert(tk.END, "\nBot -> Hi there! What can I help you with?")
+        elif user_message == "emergency":
+            txt.insert(tk.END,
+                       "\nBot -> If this is an emergency, please contact our roadside assistance at 60 3245 5533.")
+        elif user_message in ["how do i rent a car", "how to rent", "how can i rent a car"]:
+            txt.insert(tk.END,
+                       "\nBot -> To rent a car, you can browse available vehicles on our app, select your preferred car, and follow the steps to book it.")
+        elif user_message in ["i need help with my booking", "booking help", "booking issue"]:
+            txt.insert(tk.END,
+                       "\nBot -> I'd be happy to help with your booking. Could you please provide your booking ID or more details?")
+        elif user_message in ["what do you offer", "what cars do you have", "what kinds of cars are available"]:
+            txt.insert(tk.END,
+                       "\nBot -> We offer a wide range of cars, from compact cars to SUVs and luxury vehicles. You can check availability in your area on our app.")
+        elif user_message in ["thanks", "thank you", "that's helpful"]:
+            txt.insert(tk.END, "\nBot -> You're welcome! Let me know if there's anything else I can assist you with.")
+        elif user_message in ["i need to cancel my booking", "cancel my booking", "how to cancel"]:
+            txt.insert(tk.END,
+                       "\nBot -> To cancel a booking, go to 'My Bookings' in the app and select 'Cancel'. If you need further help, let me know.")
+        elif user_message in ["tell me a joke", "make me laugh", "say something funny"]:
+            txt.insert(tk.END,
+                       "\nBot -> Why don’t cars play hide and seek? Because good luck hiding something that big!")
+        elif user_message in ["goodbye", "bye", "see you later"]:
+            txt.insert(tk.END, "\nBot -> Thank you for choosing GoCar! Have a safe journey, and see you next time.")
+        else:
+            txt.insert(tk.END,
+                       "\nBot -> I'm here to help with any questions about booking, car availability, or your account. Could you please provide more details?")
+
+        e.delete(0, tk.END)
+
+    # Chat interface setup
+    label1 = tk.Label(chat_window, bg=BG_COLOR, fg=TEXT_COLOR, text="Chat with Us", font=FONT_BOLD, pady=10, width=20, height=1)
+    label1.grid(row=0)
+
+    txt = tk.Text(chat_window, bg=BG_COLOR, fg=TEXT_COLOR, font=FONT, width=60)
+    txt.grid(row=1, column=0, columnspan=2)
+
+    scrollbar = tk.Scrollbar(txt)
+    scrollbar.place(relheight=1, relx=0.974)
+
+    e = tk.Entry(chat_window, bg="#2C3E50", fg=TEXT_COLOR, font=FONT, width=55)
+    e.grid(row=2, column=0)
+
+    send_button = tk.Button(chat_window, text="Send", font=FONT_BOLD, bg=BG_GRAY, command=send)
+    send_button.grid(row=2, column=1)
 
 
 # Create main application window
@@ -154,24 +325,33 @@ canvas.pack(fill='both', expand=True)
 canvas.create_image(0, 0, image=bg_photo, anchor="nw")
 
 # create become a renter button
-become_renter_button = tk.Button(root, bg="#1572D3", text="Become a Renter", font=("Poppins", 12), command=open_becomearenter)
+become_renter_button = tk.Button(root, bg="#1572D3",fg="white", text="Become a Renter", font=("Poppins", 12,"bold"), command=open_becomearenter)
 canvas.create_window(300, 40, anchor="nw", window=become_renter_button)
 
 # create how it works button
-how_it_works_button = tk.Button(root, bg="#1572D3", text="How It Works", font=("Poppins", 12), command=open_howitworks)
+how_it_works_button = tk.Button(root, bg="#1572D3", fg="white",text="How It Works", font=("Poppins", 12,"bold"), command=open_howitworks)
 canvas.create_window(470, 40, anchor="nw", window=how_it_works_button)
 
 # create Booking details button
-bookingdetails_button = tk.Button(root, bg="#1572D3", text="Booking Details", font=("Poppins", 12), command=open_bookingdetails)
+bookingdetails_button = tk.Button(root, bg="#1572D3", fg="white",text="Booking Details", font=("Poppins", 12,"bold"), command=open_bookingdetails)
 canvas.create_window(610, 40, anchor="nw", window=bookingdetails_button)
 
 # create user profile button
-userprofile_button = tk.Button(root, bg="#1572D3", text="Profile", font=("Poppins", 12), command=open_userprofile)
+userprofile_button = tk.Button(root, bg="#1572D3", fg="white",text="Profile", font=("Poppins", 12,"bold"), command=open_userprofile)
 canvas.create_window(770, 40, anchor="nw", window=userprofile_button)
 
 # create log out button
-logout_button = tk.Button(root, bg="#1572D3", text="Log Out", font=("Poppins", 12), command=log_out)
+logout_button = tk.Button(root, bg="#1572D3", fg="white",text="Log Out", font=("Poppins", 12,"bold"), command=log_out)
 canvas.create_window(1100, 40, anchor="nw", window=logout_button)
+
+# create Promotions button
+chat_button = tk.Button(root, bg="#1572D3", fg = 'white', text="Chat with Us", font=("Poppins", 12, 'bold'),width=20, height=5, command=open_chatbox)
+canvas.create_window(100, 400, anchor="nw", window=chat_button)
+
+# create Rate Us! button
+rateus_button = tk.Button(root, bg="#1572D3", fg = 'white', text="Rate Us", font=("Poppins", 12,'bold'),width=20, height=5, command=open_rating_window)
+canvas.create_window(300, 400, anchor="nw", window=rateus_button)
+
 
 # Create input fields and labels for Location, Pickup Date, and Return Date at the bottom of the page
 location_label = tk.Label(root, text="Location", font=("Helvetica", 12), bg="white")
