@@ -5,7 +5,7 @@ import subprocess
 # create log out function
 def logout():
     root.destroy()
-    subprocess.popen(["Python","Login.py"])
+    subprocess.Popen(["Python","Login.py"])
 
 
 # Create the main window
