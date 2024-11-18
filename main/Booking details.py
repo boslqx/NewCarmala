@@ -14,6 +14,13 @@ else:
     print("No user is logged in.")
     user_id = None  # Set user_id to None if no user is logged in
 
+# Function to change button color on hover
+def on_hover(button, color):
+    button['bg'] = color
+
+def on_leave(button, color):
+    button['bg'] = color
+
 
 def fetch_booking_details(logged_in_user_id):
     # Connect to the database
@@ -142,16 +149,23 @@ def open_booking_details_window():
     # "Proceed to Payment" button
     proceed_button = tk.Button(booking_window, text="Proceed to Payment", font=("Poppins", 12, 'bold'),
                                bg="#1572D3", fg="white", command=proceed_to_payment)
+    proceed_button.bind("<Enter>", lambda event: on_hover(proceed_button, "#1058A7"))
+    proceed_button.bind("<Leave>", lambda event: on_leave(proceed_button, "#1572D3"))
     proceed_button.pack(pady=10)
 
     # "Cancel Booking" button
     cancel_button = tk.Button(booking_window, text="Cancel Booking", font=("Poppins", 12, 'bold'),
                               bg="#D9534F", fg="white", command=cancel_booking)
+    cancel_button.bind("<Enter>", lambda event: on_hover(cancel_button, "#1058A7"))
+    cancel_button.bind("<Leave>", lambda event: on_leave(cancel_button, "#D9534F"))
     cancel_button.pack(pady=10)
 
     # "Back to Home" button
     back_button = tk.Button(booking_window, text="Back to Home", font=("Poppins", 12, 'bold'),
                             bg="#1572D3", fg="white", command=go_to_home)
+    back_button.bind("<Enter>", lambda event: on_hover(back_button, "#1058A7"))
+    back_button.bind("<Leave>", lambda event: on_leave(back_button, "#1572D3"))
+
     back_button.pack(pady=10)
 
     booking_window.mainloop()

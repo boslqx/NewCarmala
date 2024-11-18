@@ -9,6 +9,9 @@ import os
 import subprocess
 import sys
 import Session
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 # Retrieve the logged-in user
 user_data = Session.get_user_session()
@@ -22,6 +25,13 @@ else:
 # Global variable for tracking the current page
 current_page = 0
 cars_per_page = 8  # Maximum number of car cards per page
+
+# Function to change button color on hover
+def on_hover(button, color):
+    button['bg'] = color
+
+def on_leave(button, color):
+    button['bg'] = color
 
 
 # Function to open the selected button
@@ -363,6 +373,11 @@ def open_booking_list(user_id, pickup_date, dropoff_date):
         conn = sqlite3.connect('Carmala.db')
         cursor = conn.cursor()
 
+        # Get the user's email
+        cursor.execute("SELECT Email FROM UserAccount WHERE UserID = ?", (user_id,))
+        user_email = cursor.fetchone()[0]
+
+        booking_details = []
         for car_id in selected_car_ids:
             # Insert each booking, set status to 'Pending'
             cursor.execute("""
@@ -370,11 +385,70 @@ def open_booking_list(user_id, pickup_date, dropoff_date):
                 VALUES (?, ?, ?, ?, ?)
             """, (user_id, car_id, pickup_date, dropoff_date, 'Pending'))
 
+            # Get the BookingID and car details for the email
+            booking_id = cursor.lastrowid
+            cursor.execute(
+                "SELECT CarName, CarLocation, CarCapacity, CarFueltype, CarTransmission, CarFeatures, CarPrice FROM CarList WHERE CarID = ?",
+                (car_id,))
+            car_details = cursor.fetchone()
+            car_name, location, capacity, fuel_type, transmission, features, price = car_details
+
+            booking_details.append(f"""
+    BookingID: {booking_id}
+    Booking Date: {pickup_date} to {dropoff_date}
+    Car Name: {car_name}
+    Location: {location}
+    Capacity: {capacity} seats
+    Fuel Type: {fuel_type}
+    Transmission: {transmission}
+    Features: {features}
+    Price: RM{price}/day
+    """)
+
         # Commit and close the database connection
         conn.commit()
         conn.close()
 
-        messagebox.showinfo("Booking Confirmed", "Your booking(s) have been submitted for approval.")
+        # Email content
+        email_subject = "Booking Confirmation - Carmala"
+        email_body = f"""
+    Dear Customer,
+
+    Thank you for trusting Carmala! Your booking(s) have been submitted for approval. Below are the details of your booking(s):
+
+    {''.join(booking_details)}
+
+    Once your booking is approved, an email will be sent to you with payment instructions to secure your booking.
+
+    Best regards,
+    The Carmala Team
+    """
+
+        # Send the email
+        try:
+            sender_email = "killerpill585@gmail.com"
+            sender_password = "oxey jnwo qybz etmg"  # Replace with your email's password or app password
+
+            # Set up the email
+            msg = MIMEMultipart()
+            msg['From'] = sender_email
+            msg['To'] = user_email
+            msg['Subject'] = email_subject
+            msg.attach(MIMEText(email_body, 'plain'))
+
+            # Connect to the SMTP server and send the email
+            with smtplib.SMTP('smtp.gmail.com', 587) as server:
+                server.starttls()
+                server.login(sender_email, sender_password)
+                server.send_message(msg)
+
+            messagebox.showinfo("Booking Confirmed",
+                                "Your booking(s) have been submitted for approval. Check your inbox for booking confirmation.")
+        except Exception as e:
+            print(f"Failed to send email: {e}")
+            messagebox.showerror("Email Error",
+                                 "Your booking was submitted, but the confirmation email could not be sent.")
+
         booking_window.destroy()  # Close the booking window after confirmation
 
     # Add the Confirm Booking button
@@ -399,7 +473,11 @@ canvas.create_window(50, 120, anchor="nw", window=car_frame)
 
 # Pagination controls
 prev_button = tk.Button(root, text="Previous", command=previous_page)
+prev_button.bind("<Enter>", lambda event: on_hover(prev_button, "#1058A7"))
+prev_button.bind("<Leave>", lambda event: on_leave(prev_button, "#1572D3"))
 next_button = tk.Button(root, text="Next", command=next_page)
+next_button.bind("<Enter>", lambda event: on_hover(next_button, "#1058A7"))
+next_button.bind("<Leave>", lambda event: on_leave(next_button, "#1572D3"))
 page_label = tk.Label(root, text="Page 1 of 1", font=("Poppins", 12))
 
 canvas.create_window(820, 610, anchor="nw", window=prev_button)
@@ -465,11 +543,15 @@ if return_date:
 # Button to open booking list window with parameters passed
 open_booking_button = tk.Button(root, text="Open Booking List", font=("Poppins", 12, 'bold'),
                                 bg="#1572D3", fg="white", command=lambda: open_booking_list(user_id, pickup_date, return_date))
+open_booking_button.bind("<Enter>", lambda event: on_hover(open_booking_button, "#1058A7"))
+open_booking_button.bind("<Leave>", lambda event: on_leave(open_booking_button, "#1572D3"))
 canvas.create_window(850, 447, anchor="nw", window=open_booking_button)
 
 
 # Create the search button
 search_button = ttk.Button(root, text="Search", command=search_action)
+search_button.bind("<Enter>", lambda event: on_hover(search_button, "#1058A7"))
+search_button.bind("<Leave>", lambda event: on_leave(search_button, "#1572D3"))
 canvas.create_window(1030, 40, anchor="nw", window=search_button)
 
 # Create the frame to hold the car cards
@@ -509,10 +591,14 @@ car_type_dropdown = create_dropdown("Car Type", ["Sedan", "Hatchback", "SUV", "M
 
 # Create the filter button
 filter_button = tk.Button(root, text="Filter", command=filter_car_data, bg="#1572D3", fg="white", font=("Poppins", 10, 'bold'))
+filter_button.bind("<Enter>", lambda event: on_hover(filter_button, "#1058A7"))
+filter_button.bind("<Leave>", lambda event: on_leave(filter_button, "#1572D3"))
 canvas.create_window(898, 325, anchor="nw", window=filter_button)
 
 # Create the Back to home button
 back_to_home_button = tk.Button(root, text="Back to home", bg="#1572D3", font=("Poppins",12,"bold"), fg="white", command=open_home)
+back_to_home_button.bind("<Enter>", lambda event: on_hover(back_to_home_button, "#1058A7"))
+back_to_home_button.bind("<Leave>", lambda event: on_leave(back_to_home_button, "#1572D3"))
 canvas.create_window(872, 494, anchor="nw", window=back_to_home_button)
 
 # Fetch and display all car data initially

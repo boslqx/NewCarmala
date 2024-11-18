@@ -305,6 +305,13 @@ def open_chatbox():
     send_button = tk.Button(chat_window, text="Send", font=FONT_BOLD, bg=BG_GRAY, command=send)
     send_button.grid(row=2, column=1)
 
+# Function to change button color on hover
+def on_hover(button, color):
+    button['bg'] = color
+
+def on_leave(button, color):
+    button['bg'] = color
+
 
 # Create main application window
 root = tk.Tk()
@@ -326,53 +333,67 @@ canvas.create_image(0, 0, image=bg_photo, anchor="nw")
 
 # create become a renter button
 become_renter_button = tk.Button(root, bg="#1572D3",fg="white", text="Become a Renter", font=("Poppins", 12,"bold"), command=open_becomearenter)
+become_renter_button.bind("<Enter>", lambda event: on_hover(become_renter_button, "#1058A7"))
+become_renter_button.bind("<Leave>", lambda event: on_leave(become_renter_button, "#1572D3"))
 canvas.create_window(300, 40, anchor="nw", window=become_renter_button)
 
 # create how it works button
 how_it_works_button = tk.Button(root, bg="#1572D3", fg="white",text="How It Works", font=("Poppins", 12,"bold"), command=open_howitworks)
+how_it_works_button.bind("<Enter>", lambda event: on_hover(how_it_works_button, "#1058A7"))
+how_it_works_button.bind("<Leave>", lambda event: on_leave(how_it_works_button, "#1572D3"))
 canvas.create_window(470, 40, anchor="nw", window=how_it_works_button)
 
 # create Booking details button
 bookingdetails_button = tk.Button(root, bg="#1572D3", fg="white",text="Booking Details", font=("Poppins", 12,"bold"), command=open_bookingdetails)
+bookingdetails_button.bind("<Enter>", lambda event: on_hover(bookingdetails_button, "#1058A7"))
+bookingdetails_button.bind("<Leave>", lambda event: on_leave(bookingdetails_button, "#1572D3"))
 canvas.create_window(610, 40, anchor="nw", window=bookingdetails_button)
 
 # create user profile button
 userprofile_button = tk.Button(root, bg="#1572D3", fg="white",text="Profile", font=("Poppins", 12,"bold"), command=open_userprofile)
+userprofile_button.bind("<Enter>", lambda event: on_hover(userprofile_button, "#1058A7"))
+userprofile_button.bind("<Leave>", lambda event: on_leave(userprofile_button, "#1572D3"))
 canvas.create_window(770, 40, anchor="nw", window=userprofile_button)
 
 # create log out button
 logout_button = tk.Button(root, bg="#1572D3", fg="white",text="Log Out", font=("Poppins", 12,"bold"), command=log_out)
+logout_button.bind("<Enter>", lambda event: on_hover(logout_button, "#1058A7"))
+logout_button.bind("<Leave>", lambda event: on_leave(logout_button, "#1572D3"))
 canvas.create_window(1100, 40, anchor="nw", window=logout_button)
 
 # create Promotions button
-chat_button = tk.Button(root, bg="#1572D3", fg = 'white', text="Chat with Us", font=("Poppins", 12, 'bold'),width=20, height=5, command=open_chatbox)
+chat_button = tk.Button(root, bg="#28A745", fg = 'white', text="Chat with Us", font=("Poppins", 12, 'bold'),width=20, height=5, command=open_chatbox)
+chat_button.bind("<Enter>", lambda event: on_hover(chat_button, "#218838"))
+chat_button.bind("<Leave>", lambda event: on_leave(chat_button, "#28A745"))
 canvas.create_window(100, 400, anchor="nw", window=chat_button)
 
 # create Rate Us! button
-rateus_button = tk.Button(root, bg="#1572D3", fg = 'white', text="Rate Us", font=("Poppins", 12,'bold'),width=20, height=5, command=open_rating_window)
+rateus_button = tk.Button(root, bg="#FFC107", fg = 'white', text="Rate Us", font=("Poppins", 12,'bold'),width=20, height=5, command=open_rating_window)
+rateus_button.bind("<Enter>", lambda event: on_hover(rateus_button, "#E0A800"))
+rateus_button.bind("<Leave>", lambda event: on_leave(rateus_button, "#FFC107"))
 canvas.create_window(300, 400, anchor="nw", window=rateus_button)
 
 
 # Create input fields and labels for Location, Pickup Date, and Return Date at the bottom of the page
 location_label = tk.Label(root, text="Location", font=("Helvetica", 12), bg="white")
-canvas.create_window(150, 600, anchor="nw", window=location_label)
+canvas.create_window(100, 600, anchor="nw", window=location_label)
 
 location_entry = tk.Entry(root, font=("Helvetica", 12), width=20)
-canvas.create_window(230, 600, anchor="nw", window=location_entry)
+canvas.create_window(170, 590, anchor="nw", window=location_entry,width=250, height=40)
 
 pickup_label = tk.Label(root, text="Pickup date", font=("Helvetica", 12), bg="white")
-canvas.create_window(450, 600, anchor="nw", window=pickup_label)
+canvas.create_window(430, 600, anchor="nw", window=pickup_label)
 
 # Replace the text entry with a calendar date picker (DateEntry)
 pickup_date_entry = DateEntry(root, font=("Helvetica", 12), width=18, background='darkblue', foreground='white', borderwidth=2)
-canvas.create_window(540, 600, anchor="nw", window=pickup_date_entry)
+canvas.create_window(520, 590, anchor="nw", window=pickup_date_entry,width=220, height=40)
 
 return_label = tk.Label(root, text="Return date", font=("Helvetica", 12), bg="white")
-canvas.create_window(760, 600, anchor="nw", window=return_label)
+canvas.create_window(750, 600, anchor="nw", window=return_label)
 
 # Replace the text entry with a calendar date picker (DateEntry)
 return_date_entry = DateEntry(root, font=("Helvetica", 12), width=18, background='darkblue', foreground='white', borderwidth=2)
-canvas.create_window(850, 600, anchor="nw", window=return_date_entry)
+canvas.create_window(840, 590, anchor="nw", window=return_date_entry,width=220, height=40)
 
 # Create the search button
 search_button = ttk.Button(root, text="Search", command=search_action)

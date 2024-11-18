@@ -30,7 +30,7 @@ def open_userprofile():
     print("User Profile opened with process ID:", process.pid)
 
     # Delay the close of the current window
-    root.after(400, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
+    root.after(400, root.destroy)  # Waits 300 milliseconds (0.4 second) before destroying
 
 # Function to open the script when the "How it Works" button is clicked
 def open_howitworks():
@@ -47,6 +47,13 @@ def open_becomearenter():
 
     # Delay the close of the current window
     root.after(500, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
+
+# Function to change button color on hover
+def on_hover(button, color):
+    button['bg'] = color
+
+def on_leave(button, color):
+    button['bg'] = color
 
 # Create a window with a specific geometry
 root = tk.Tk()
@@ -71,18 +78,26 @@ canvas.bind('<Configure>', lambda e: canvas.configure(scrollregion=canvas.bbox("
 
 # create home button
 home_button = tk.Button(root, bg="#1572D3", text="Home", fg="white",font=("Poppins",12,"bold"), command=open_home)
+home_button.bind("<Enter>", lambda event: on_hover(home_button, "#1058A7"))
+home_button.bind("<Leave>", lambda event: on_leave(home_button, "#1572D3"))
 canvas.create_window(200, 40, anchor="nw", window=home_button)
 
 # create become a renter button
 become_renter_button = tk.Button(root, bg="#1572D3", text="Become a Renter",  fg="white",font=("Poppins",12,"bold"), command=open_becomearenter)
+become_renter_button.bind("<Enter>", lambda event: on_hover(become_renter_button, "#1058A7"))
+become_renter_button.bind("<Leave>", lambda event: on_leave(become_renter_button, "#1572D3"))
 canvas.create_window(300, 40, anchor="nw", window=become_renter_button)
 
 # create how it works button
 how_it_works_button = tk.Button(root, bg="#1572D3", text="How It Works", fg="white",font=("Poppins",12,"bold"), command=open_howitworks)
+how_it_works_button.bind("<Enter>", lambda event: on_hover(how_it_works_button, "#1058A7"))
+how_it_works_button.bind("<Leave>", lambda event: on_leave(how_it_works_button, "#1572D3"))
 canvas.create_window(470, 40, anchor="nw", window=how_it_works_button)
 
 # create profile button
 userprofile_button = tk.Button(root, bg="#1572D3", text="Profile",  fg="white",font=("Poppins",12,"bold"), command=open_userprofile)
+userprofile_button.bind("<Enter>", lambda event: on_hover(userprofile_button, "#1058A7"))
+userprofile_button.bind("<Leave>", lambda event: on_leave(userprofile_button, "#1572D3"))
 canvas.create_window(610, 40, anchor="nw", window=userprofile_button)
 
 # Create another frame inside the canvas to hold the images

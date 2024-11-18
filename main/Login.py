@@ -8,6 +8,7 @@ import random
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from tkinter import simpledialog
 
 # Initialize the verification code globally
 verification_code = None
@@ -25,7 +26,7 @@ def send_verification_email(email, code):
         smtp_server = "smtp.gmail.com"
         smtp_port = 587
         sender_email = "killerpill585@gmail.com"
-        sender_password = "ckjp oylx txmx iysm"
+        sender_password = "oxey jnwo qybz etmg"
 
         # Compose the email
         message = MIMEMultipart("alternative")
@@ -198,8 +199,53 @@ def open_registration_frame():
     # Show the registration frame
     registration_frame.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
 
+
 def forgot_password():
-    messagebox.showinfo("Forgot Password", "Redirecting to password recovery...")
+    global verification_code
+    # Step 1: Prompt for the user's email address
+    email = simpledialog.askstring("Forgot Password", "Enter your registered email:")
+
+    if email:
+        # Check if email exists in the database
+        conn = sqlite3.connect('Carmala.db')
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM UserAccount WHERE Email = ?", (email,))
+        user = cursor.fetchone()
+        conn.close()
+
+        if user:
+            # Step 2: Generate and send the verification code
+            verification_code = generate_verification_code()
+            if send_verification_email(email, verification_code):
+                # Step 3: Prompt the user to enter the verification code
+                entered_code = simpledialog.askstring("Verification",
+                                                      "Enter the 4-digit verification code sent to your email:")
+                if entered_code == verification_code:
+                    # Step 4: Prompt the user to set a new password
+                    new_password = simpledialog.askstring("Reset Password",
+                                                          "Enter your new password (minimum 8 characters):")
+                    confirm_password = simpledialog.askstring("Reset Password", "Confirm your new password:")
+
+                    if new_password and confirm_password:
+                        if len(new_password) < 8 or not new_password.isalnum():
+                            messagebox.showerror("Error",
+                                                 "Password must be at least 8 characters and contain no special characters!")
+                        elif new_password != confirm_password:
+                            messagebox.showerror("Error", "Passwords do not match!")
+                        else:
+                            # Update the password in the database
+                            conn = sqlite3.connect('Carmala.db')
+                            cursor = conn.cursor()
+                            cursor.execute("UPDATE UserAccount SET Password = ? WHERE Email = ?", (new_password, email))
+                            conn.commit()
+                            conn.close()
+                            messagebox.showinfo("Success", "Password updated successfully!")
+                            open_login_window()  # Redirect to the login window
+                else:
+                    messagebox.showerror("Error", "Incorrect verification code. Please try again.")
+        else:
+            # Email not registered
+            messagebox.showerror("Error", "This email is not registered for the application.")
 
 
 def add_placeholder(entry, placeholder_text):
@@ -231,6 +277,12 @@ def restore_placeholder(event, placeholder_text):
         event.widget.insert(0, placeholder_text)
         event.widget.configure(fg='grey')
 
+# Function to change button color on hover
+def on_hover(button, color):
+    button['bg'] = color
+
+def on_leave(button, color):
+    button['bg'] = color
 
 # Create the main window
 root = tk.Tk()
@@ -285,6 +337,8 @@ add_placeholder_password(entry_password, "Enter your password")
 
 # Login button in the login frame
 button_login = tk.Button(login_frame, text="Log in",  fg="white",font=("Poppins",12,"bold"), command=login, bg="#1572D3")
+button_login.bind("<Enter>", lambda event: on_hover(button_login, "#1058A7"))
+button_login.bind("<Leave>", lambda event: on_leave(button_login, "#1572D3"))
 button_login.place(x=180, y=340)
 
 # Forgot password and register labels in the login frame
@@ -354,6 +408,8 @@ label_confirm_password_note.place(x=61, y=460)
 
 # Register button
 button_register = tk.Button(registration_frame, text="Register",  fg="white",font=("Poppins",12,"bold"),command=register_user, bg="#1572D3")
+button_register.bind("<Enter>", lambda event: on_hover(button_register, "#1058A7"))
+button_register.bind("<Leave>", lambda event: on_leave(button_register, "#1572D3"))
 button_register.place(x=170, y=500)
 
 # Back to login button
@@ -361,6 +417,8 @@ button_back_to_login = tk.Button(registration_frame, text="Back to Login",  fg="
                                  command=lambda: [registration_frame.pack_forget(),
                                                   login_frame.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)],
                                  bg="#1572D3")
+button_back_to_login.bind("<Enter>", lambda event: on_hover(button_back_to_login, "#1058A7"))
+button_back_to_login.bind("<Leave>", lambda event: on_leave(button_back_to_login, "#1572D3"))
 button_back_to_login.place(x=150, y=550)
 
 
@@ -377,10 +435,6 @@ entry_verification_code.pack(pady=10)
 # Button to verify code
 button_verify_code = tk.Button(verification_frame, text="Verify", font=("Poppins", 12, "bold"), fg="white", bg="#1572D3", command=verify_code)
 button_verify_code.pack(pady=20)
-
-# Add this button in the registration frame as before
-button_register = tk.Button(registration_frame, text="Register",  fg="white",font=("Poppins",12,"bold"),command=register_user, bg="#1572D3")
-button_register.place(x=170, y=500)
 
 # Start the main event loop
 root.mainloop()

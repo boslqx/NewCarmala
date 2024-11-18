@@ -4,8 +4,8 @@ from PIL import ImageTk, Image
 import sqlite3
 import subprocess
 import Session
-import os
 import io
+
 
 # Retrieve the logged-in user
 user_data = Session.get_user_session()
@@ -189,6 +189,12 @@ def open_bookingdetails():
     # Delay the close of the current window
     root.after(400, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
 
+# Function to change button color on hover
+def on_hover(button, color):
+    button['bg'] = color
+
+def on_leave(button, color):
+    button['bg'] = color
 
 # GUI setup
 root = tk.Tk()
@@ -210,15 +216,23 @@ logo_button.bind("<Button-1>", lambda e: open_home())
 
 # Header buttons
 become_renter_button = tk.Button(root, bg="#1572D3", text="Become a Renter", fg="white", font=("Poppins", 12, "bold"), command=open_becomearenter)
+become_renter_button.bind("<Enter>", lambda event: on_hover(become_renter_button, "#1058A7"))
+become_renter_button.bind("<Leave>", lambda event: on_leave(become_renter_button, "#1572D3"))
 canvas.create_window(200, 40, anchor="nw", window=become_renter_button)
 
 how_it_works_button = tk.Button(root, bg="#1572D3", text="How It Works", fg="white", font=("Poppins", 12, "bold"), command=open_howitworks)
+how_it_works_button.bind("<Enter>", lambda event: on_hover(how_it_works_button, "#1058A7"))
+how_it_works_button.bind("<Leave>", lambda event: on_leave(how_it_works_button, "#1572D3"))
 canvas.create_window(370, 40, anchor="nw", window=how_it_works_button)
 
 bookingdetails_button = tk.Button(root, bg="#1572D3", text="Booking Details", fg="white", font=("Poppins", 12, "bold"), command=open_bookingdetails)
+bookingdetails_button.bind("<Enter>", lambda event: on_hover(bookingdetails_button, "#1058A7"))
+bookingdetails_button.bind("<Leave>", lambda event: on_leave(bookingdetails_button, "#1572D3"))
 canvas.create_window(510, 40, anchor="nw", window=bookingdetails_button)
 
 log_out_button = tk.Button(root, bg="#1572D3", text="Log Out", fg="white", font=("Poppins", 12, "bold"), command=log_out)
+log_out_button.bind("<Enter>", lambda event: on_hover(log_out_button, "#1058A7"))
+log_out_button.bind("<Leave>", lambda event: on_leave(log_out_button, "#1572D3"))
 canvas.create_window(960, 40, anchor="nw", window=log_out_button)
 
 # User information fields
@@ -256,9 +270,6 @@ upload_profile_btn = ttk.Button(root, text="Upload Profile Picture", command=upl
 canvas.create_window(340, 195, window=upload_profile_btn)
 upload_license_btn = ttk.Button(root, text="Upload Driving License", command=upload_driving_license)
 canvas.create_window(390, 550, window=upload_license_btn)
-
-
-
 
 # Edit and Save buttons
 edit_btn = tk.Button(root, width=10, height=2,text="Edit", bg="#1572D3", fg="white", font=("Arial", 12, "bold"),command=lambda: toggle_edit(True))
