@@ -51,12 +51,22 @@ def get_available_cars(location, pickup_date, return_date):
 
 # Function to open the Car List interface with the selected parameters
 def open_car_list(location, pickup_date, return_date):
-    try:
-        # Call the Car list.py script with the provided arguments directly
-        subprocess.Popen(["python", "Car list.py", location, pickup_date, return_date])
-        root.after(1000, root.destroy)
-    except Exception as e:
-        messagebox.showerror("Error", f"Failed to open Car List: {e}")
+    # Hide the main window
+    root.withdraw()
+
+    # Open the external script using subprocess
+    process = subprocess.Popen(["python", "Car list.py", location, pickup_date, return_date])
+    print("Car list opened with process ID:", process.pid)
+
+    # Poll for the process's status and restore the main window when it finishes
+    def check_process():
+        if process.poll() is None:  # Process is still running
+            root.after(100, check_process)  # Check again after 100ms
+        else:
+            print("Car List closed")
+            root.deiconify()  # Restore the main window
+
+    check_process()
 
 def search_action():
     location = location_entry.get().strip()  # Trim any leading/trailing spaces
@@ -356,7 +366,7 @@ def open_chatbox():
         e.delete(0, tk.END)
 
     # Chat interface setup
-    label1 = tk.Label(chat_window, bg='#1572D3', fg=TEXT_COLOR, text="Chat with Us", font=FONT_BOLD, pady=10, width=20, height=1)
+    label1 = tk.Label(chat_window, bg='#F1F1F1', fg="#1572D3", text="Chat with Us", font=FONT_BOLD, pady=10, width=20, height=1)
     label1.grid(row=0)
 
     txt = tk.Text(chat_window, bg=BG_COLOR, fg=TEXT_COLOR, font=FONT, width=60)
@@ -368,7 +378,7 @@ def open_chatbox():
     e = tk.Entry(chat_window, bg="#F1F1F1", fg=TEXT_COLOR, font=FONT, width=55)
     e.grid(row=2, column=0)
 
-    send_button = tk.Button(chat_window, text="Send", font=FONT_BOLD, bg=BG_GRAY, command=send)
+    send_button = tk.Button(chat_window, text="Send", font=FONT_BOLD, bg=BG_GRAY,fg = "#1572D3", command=send)
     send_button.grid(row=2, column=1)
 
 # Function to change button color on hover
