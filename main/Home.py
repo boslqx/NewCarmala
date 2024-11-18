@@ -54,7 +54,7 @@ def open_car_list(location, pickup_date, return_date):
     try:
         # Call the Car list.py script with the provided arguments directly
         subprocess.Popen(["python", "Car list.py", location, pickup_date, return_date])
-        root.after(400, root.destroy)
+        root.after(1000, root.destroy)
     except Exception as e:
         messagebox.showerror("Error", f"Failed to open Car List: {e}")
 
@@ -95,29 +95,60 @@ def search_action():
 
 
 
-# Function to open the selected button
 def open_userprofile():
+    # Hide the main window
+    root.withdraw()
+
+    # Open the external script using subprocess
     process = subprocess.Popen(["python", "User profile.py"])
     print("User Profile opened with process ID:", process.pid)
 
-    # Delay the close of the current window
-    root.after(400, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
+    # Poll for the process's status and restore the main window when it finishes
+    def check_process():
+        if process.poll() is None:  # Process is still running
+            root.after(100, check_process)  # Check again after 100ms
+        else:
+            print("User Profile closed")
+            root.deiconify()  # Restore the main window
+
+    check_process()
 
 # Function to open the script when the "How it Works" button is clicked
 def open_howitworks():
+    # Hide the main window
+    root.withdraw()
+
+    # Open the external script using subprocess
     process = subprocess.Popen(["python", "How it Works.py"])
     print("How it Works opened with process ID:", process.pid)
 
-    # Delay the close of the current window
-    root.after(400, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
+    # Poll for the process's status and restore the main window when it finishes
+    def check_process():
+        if process.poll() is None:  # Process is still running
+            root.after(100, check_process)  # Check again after 100ms
+        else:
+            print("How it Works closed")
+            root.deiconify()  # Restore the main window
 
-# Function to open the script when the "Become a Renter" button is clicked
+    check_process()
+
 def open_becomearenter():
+    # Hide the main window
+    root.withdraw()
+
+    # Open the external script using subprocess
     process = subprocess.Popen(["python", "Become a renter.py"])
     print("Become a renter opened with process ID:", process.pid)
 
-    # Delay the close of the current window
-    root.after(400, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
+    # Poll for the process's status and restore the main window when it finishes
+    def check_process():
+        if process.poll() is None:  # Process is still running
+            root.after(100, check_process)  # Check again after 100ms
+        else:
+            print("Become a renter closed")
+            root.deiconify()  # Restore the main window
+
+    check_process()
 
 # Function to open the script when the "Become a Renter" button is clicked
 def open_bookingdetails():
@@ -133,13 +164,18 @@ def log_out():
     root.destroy()
     subprocess.Popen(["python", "Login.py"])
 
-# Rating window function and button
 def submit_rating():
     # Get the selected rating (1 to 5)
     rating = rating_var.get()
 
     # Get the optional comment (if any)
     comment = comment_entry.get("1.0", tk.END).strip()
+
+    # Retrieve the selected car's ID
+    selected_car = car_combobox.get()
+    if not selected_car:
+        messagebox.showwarning("No Car Selected", "Please select a car before submitting.")
+        return
 
     # Retrieve the logged-in user ID (assuming the session data is available)
     logged_in_user = Session.get_user_session()
@@ -156,11 +192,20 @@ def submit_rating():
             conn = sqlite3.connect("Carmala.db")
             cursor = conn.cursor()
 
+            # Get the CarID based on the selected CarName
+            cursor.execute("""
+                SELECT CarID FROM CarList WHERE CarName = ?
+            """, (selected_car,))
+            car_id = cursor.fetchone()
+            if not car_id:
+                raise ValueError("Selected car not found in the database.")
+            car_id = car_id[0]
+
             # Insert the rating into the Rating table
             cursor.execute("""
-                INSERT INTO Rating (UserID, Stars, Comment) 
-                VALUES (?, ?, ?)
-            """, (user_id, rating, comment))
+                INSERT INTO Rating (UserID, CarID, Stars, Comment) 
+                VALUES (?, ?, ?, ?)
+            """, (user_id, car_id, rating, comment))
 
             # Commit the changes and close the connection
             conn.commit()
@@ -169,30 +214,26 @@ def submit_rating():
             # Notify the user and clear the form
             messagebox.showinfo("Thank You", "Your rating has been submitted!")
             print(f"Rating: {rating} star(s)")
+            print(f"Car: {selected_car}")
             print(f"Comment: {comment if comment else 'No comment provided'}")
 
-            # Clear the rating and comment fields
+            # Clear the rating, comment fields, and reset the combobox
             rating_var.set(0)
             comment_entry.delete("1.0", tk.END)
+            car_combobox.set('')
             for star in stars:
                 star.config(text="☆")
 
         except sqlite3.Error as e:
             messagebox.showerror("Database Error", f"An error occurred: {e}")
+        except ValueError as ve:
+            messagebox.showerror("Error", str(ve))
     else:
         messagebox.showwarning("No Rating", "Please select a rating before submitting.")
 
 
-# Star button click function
-def select_star(rating):
-    rating_var.set(rating)
-    # Update star display based on selected rating
-    for i in range(1, 6):
-        stars[i - 1].config(text="★" if i <= rating else "☆")
-
-
 def open_rating_window():
-    global rating_window, rating_var, comment_entry, stars
+    global rating_window, rating_var, comment_entry, stars, car_combobox
     logged_in_user = Session.get_user_session()
 
     if logged_in_user:
@@ -206,7 +247,7 @@ def open_rating_window():
     # Create a new top-level window for the rating UI
     rating_window = tk.Toplevel(root)
     rating_window.title("Rate Your Experience")
-    rating_window.geometry("500x300")
+    rating_window.geometry("500x400")
 
     # Label for the rating window
     rating_label = tk.Label(rating_window, text="Please rate your experience:", font=("Arial", 14))
@@ -226,6 +267,34 @@ def open_rating_window():
         star_label.grid(row=0, column=i - 1, padx=5)
         star_label.bind("<Button-1>", lambda e, i=i: select_star(i))
         stars.append(star_label)
+
+    # Dropdown for selecting the car
+    car_label = tk.Label(rating_window, text="Select the car you booked:", font=("Arial", 10))
+    car_label.pack(pady=5)
+
+    car_combobox = ttk.Combobox(rating_window, state="readonly", width=30)
+    car_combobox.pack(pady=5)
+
+    # Fetch car names from BookingHistory and CarList
+    try:
+        conn = sqlite3.connect("Carmala.db")
+        cursor = conn.cursor()
+
+        # Inner join BookingHistory and CarList to get CarName for the logged-in user
+        cursor.execute("""
+            SELECT CarList.CarName 
+            FROM BookingHistory 
+            INNER JOIN CarList ON BookingHistory.CarID = CarList.CarID
+            WHERE BookingHistory.UserID = ?
+        """, (logged_in_user.get("user_id"),))
+        car_names = [row[0] for row in cursor.fetchall()]
+
+        conn.close()
+
+        # Populate the combobox
+        car_combobox['values'] = car_names
+    except sqlite3.Error as e:
+        messagebox.showerror("Database Error", f"An error occurred while fetching car data: {e}")
 
     # Label and entry box for additional comments
     comment_label = tk.Label(rating_window, text="Leave a comment (optional):", font=("Arial", 10))

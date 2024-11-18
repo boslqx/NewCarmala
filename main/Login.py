@@ -202,6 +202,7 @@ def open_registration_frame():
 
 def forgot_password():
     global verification_code
+
     # Step 1: Prompt for the user's email address
     email = simpledialog.askstring("Forgot Password", "Enter your registered email:")
 
@@ -218,18 +219,20 @@ def forgot_password():
             verification_code = generate_verification_code()
             if send_verification_email(email, verification_code):
                 # Step 3: Prompt the user to enter the verification code
-                entered_code = simpledialog.askstring("Verification",
-                                                      "Enter the 4-digit verification code sent to your email:")
-                if entered_code == verification_code:
-                    # Step 4: Prompt the user to set a new password
-                    new_password = simpledialog.askstring("Reset Password",
-                                                          "Enter your new password (minimum 8 characters):")
-                    confirm_password = simpledialog.askstring("Reset Password", "Confirm your new password:")
+                entered_code = simpledialog.askstring("Verification", "Enter the 4-digit verification code sent to your email:")
 
-                    if new_password and confirm_password:
+                if entered_code == verification_code:
+                    # Step 4: Create a new window for password reset
+                    reset_window = tk.Toplevel()
+                    reset_window.title("Reset Password")
+
+                    # Function to handle password update
+                    def update_password():
+                        new_password = new_password_entry.get()
+                        confirm_password = confirm_password_entry.get()
+
                         if len(new_password) < 8 or not new_password.isalnum():
-                            messagebox.showerror("Error",
-                                                 "Password must be at least 8 characters and contain no special characters!")
+                            messagebox.showerror("Error", "Password must be at least 8 characters and contain no special characters!")
                         elif new_password != confirm_password:
                             messagebox.showerror("Error", "Passwords do not match!")
                         else:
@@ -240,7 +243,41 @@ def forgot_password():
                             conn.commit()
                             conn.close()
                             messagebox.showinfo("Success", "Password updated successfully!")
-                            open_login_window()  # Redirect to the login window
+                            reset_window.destroy()
+                            open_login_window()  # Redirect to login window
+
+                    # Add password entries with placeholders
+                    def add_placeholder_password(entry, placeholder_text):
+                        entry.insert(0, placeholder_text)
+                        entry.configure(fg='grey', show='')
+                        entry.bind("<FocusIn>", lambda e: clear_placeholder_password(e, placeholder_text))
+                        entry.bind("<FocusOut>", lambda e: restore_placeholder_password(e, placeholder_text))
+
+                    def clear_placeholder_password(event, placeholder_text):
+                        entry = event.widget
+                        if entry.get() == placeholder_text:
+                            entry.delete(0, tk.END)
+                            entry.configure(fg='black', show='*')
+
+                    def restore_placeholder_password(event, placeholder_text):
+                        entry = event.widget
+                        if entry.get() == "":
+                            entry.insert(0, placeholder_text)
+                            entry.configure(fg='grey', show='')
+
+                    # Create and pack new password entry
+                    new_password_entry = tk.Entry(reset_window)
+                    add_placeholder_password(new_password_entry, "Enter new password")
+                    new_password_entry.pack(pady=5)
+
+                    # Create and pack confirm password entry
+                    confirm_password_entry = tk.Entry(reset_window)
+                    add_placeholder_password(confirm_password_entry, "Confirm new password")
+                    confirm_password_entry.pack(pady=5)
+
+                    # Submit button
+                    submit_button = tk.Button(reset_window, text="Submit", command=update_password)
+                    submit_button.pack(pady=10)
                 else:
                     messagebox.showerror("Error", "Incorrect verification code. Please try again.")
         else:
@@ -365,7 +402,7 @@ entry_reg_email = tk.Entry(registration_frame, font=("Poppins", 14), width=25)
 entry_reg_email.place(x=63, y=175)
 
 # Add placeholder text for the email
-add_placeholder(entry_reg_email, "Enter your username")
+add_placeholder(entry_reg_email, "Enter your email")
 
 
 # Registration Username field

@@ -166,10 +166,19 @@ def open_home():
     # Delay the close of the current window
     root.after(400, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
 
-# Function to open the script when the "How it Works" button is clicked
+# Function to open How it Works script
 def open_howitworks():
     process = subprocess.Popen(["python", "How it Works.py"])
     print("How it Works opened with process ID:", process.pid)
+
+    # Function to check if How it Works script is closed
+    def check_process():
+        if process.poll() is None:  # Process is still running
+            root.after(100, check_process)  # Check again after 100ms
+        else:
+            print("How it Works closed")
+
+    check_process()
 
     # Delay the close of the current window
     root.after(400, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
