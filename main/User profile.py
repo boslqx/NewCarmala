@@ -42,12 +42,23 @@ def save_to_database():
     print(f"Country: {country}")
     print(f"ID Number: {identification_number}")
 
+    # Only convert image to BLOB if a new file was uploaded
     profile_picture = convert_image_to_blob(profile_picture_path) if profile_picture_path else None
     driving_license = convert_image_to_blob(driving_license_path) if driving_license_path else None
 
     try:
         with sqlite3.connect('Carmala.db') as conn:
             cursor = conn.cursor()
+
+            # Get the current images in the database to avoid overwriting if no new image is uploaded
+            cursor.execute("SELECT ProfilePicture, DrivingLicense FROM UserAccount WHERE UserID = ?", (user_id,))
+            current_images = cursor.fetchone()
+            current_profile_picture = current_images[0] if current_images[0] else None
+            current_driving_license = current_images[1] if current_images[1] else None
+
+            # If no new image is uploaded, keep the old images in the database
+            profile_picture = profile_picture if profile_picture else current_profile_picture
+            driving_license = driving_license if driving_license else current_driving_license
 
             # Update user's data
             cursor.execute('''UPDATE UserAccount
@@ -61,6 +72,7 @@ def save_to_database():
     except sqlite3.Error as e:
         print(f"Database error: {e}")
         messagebox.showerror("Error", f"Error saving data: {e}")
+
 
 
 # Function to load user data into fields
