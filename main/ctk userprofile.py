@@ -1,11 +1,10 @@
-import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+import customtkinter as ctk
+from tkinter import filedialog, messagebox
 from PIL import ImageTk, Image
 import sqlite3
 import subprocess
 import Session
 import io
-
 
 # Retrieve the logged-in user
 user_data = Session.get_user_session()
@@ -14,6 +13,7 @@ if user_data:
     print(f"Logged in as User ID: {user_id}")
 else:
     print("No user is logged in.")
+
 
 # Global variables for file paths
 profile_picture_path = None
@@ -63,13 +63,15 @@ def save_to_database():
         messagebox.showerror("Error", f"Error saving data: {e}")
 
 
+
+
+# Function to load user data into fields
 # Function to load user data into fields
 def load_user_data():
     conn = sqlite3.connect('Carmala.db')
     cursor = conn.cursor()
-    cursor.execute(
-        "SELECT Username, Email, Gender, Country, IdentificationNumber, ProfilePicture, DrivingLicense FROM UserAccount WHERE UserID = ?",
-        (user_id,))
+    cursor.execute("SELECT Username, Email, Gender, Country, IdentificationNumber, ProfilePicture, DrivingLicense FROM UserAccount WHERE UserID = ?",
+                   (user_id,))
     user_info = cursor.fetchone()
     conn.close()
 
@@ -77,48 +79,55 @@ def load_user_data():
 
     if user_info:
         # Temporarily enable editing to populate the fields, then disable again if needed
-        username_entry.config(state='normal')
-        email_entry.config(state='normal')
-        country_entry.config(state='normal')
-        id_entry.config(state='normal')
+        username_entry.configure(state='normal')
+        email_entry.configure(state='normal')
+        country_entry.configure(state='normal')
+        id_entry.configure(state='normal')
 
         # Clear existing values and insert fetched data
-        username_entry.delete(0, tk.END)
+        username_entry.delete(0, ctk.END)
         username_entry.insert(0, user_info[0] or "")
 
-        email_entry.delete(0, tk.END)
+        email_entry.delete(0, ctk.END)
         email_entry.insert(0, user_info[1] or "")
 
         gender_combobox.set(user_info[2] or "")
 
-        country_entry.delete(0, tk.END)
+        country_entry.delete(0, ctk.END)
         country_entry.insert(0, user_info[3] or "")
 
-        id_entry.delete(0, tk.END)
+        id_entry.delete(0, ctk.END)
         id_entry.insert(0, user_info[4] or "")
 
         # Disable editing if not in edit mode
-        username_entry.config(state='readonly')
-        email_entry.config(state='readonly')
-        country_entry.config(state='readonly')
-        id_entry.config(state='readonly')
+        username_entry.configure(state='readonly')
+        email_entry.configure(state='readonly')
+        country_entry.configure(state='readonly')
+        id_entry.configure(state='readonly')
 
         # Set placeholders if profile picture or driving license is missing
         placeholder_img = Image.new('RGB', (100, 100), color='gray')  # Creates a gray square placeholder image
         placeholder_img_display = ImageTk.PhotoImage(placeholder_img)
 
+        # Remove any previously added images (if necessary)
+        canvas.delete("profile_picture")  # Delete any previous profile picture from the canvas
+        canvas.delete("driving_license")  # Delete any previous driving license from the canvas
+
         # Display profile picture
-        if user_info[5]:  # If profile picture exists
+        if user_info[5] and len(user_info[5]) > 0:  # Check if ProfilePicture is not None or empty
             profile_img_data = io.BytesIO(user_info[5])
             profile_img = Image.open(profile_img_data)
             profile_img = profile_img.resize((100, 100), Image.LANCZOS)
             profile_img_display = ImageTk.PhotoImage(profile_img)
-        else:  # If no profile picture, use placeholder
-            profile_img_display = placeholder_img_display
-
-        # Update the profile picture label with the actual image or placeholder
-        profile_picture_label.config(image=profile_img_display)
-        profile_picture_label.image = profile_img_display  # Keep a reference to prevent garbage collection
+            # Display the image directly on the canvas without a label
+            canvas.create_image(300, 220, image=profile_img_display, tags="profile_picture")
+            canvas.image = profile_img_display  # Keep reference to avoid garbage collection
+        else:
+            # Handle case where ProfilePicture is missing
+            placeholder_img = Image.new('RGB', (100, 100), color='gray')  # Creates a gray square placeholder image
+            placeholder_img_display = ImageTk.PhotoImage(placeholder_img)
+            canvas.create_image(300, 220, image=placeholder_img_display, tags="profile_picture")
+            canvas.image = placeholder_img_display  # Keep reference to avoid garbage collection
 
         # Display driving license
         if user_info[6]:  # If driving license image exists
@@ -126,27 +135,30 @@ def load_user_data():
             license_img = Image.open(license_img_data)
             license_img = license_img.resize((100, 100), Image.LANCZOS)
             license_img_display = ImageTk.PhotoImage(license_img)
+            # Display the image directly on the canvas without a label
+            canvas.create_image(300, 690, image=license_img_display, tags="driving_license")
+            canvas.image = license_img_display  # Keep reference to avoid garbage collection
         else:  # If no driving license, use placeholder
-            license_img_display = placeholder_img_display
-
-        # Update the driving license label with the actual image or placeholder
-        driving_license_label.config(image=license_img_display)
-        driving_license_label.image = license_img_display  # Keep a reference to prevent garbage collection
+            canvas.create_image(300, 690, image=placeholder_img_display, tags="driving_license")
+            canvas.image = placeholder_img_display  # Keep reference to avoid garbage collection
     else:
         messagebox.showwarning("Warning", "User information could not be retrieved.")
 
 
+
+
+
 # Function to toggle editing
 def toggle_edit(state):
-    username_entry.config(state='normal' if state else 'readonly')
-    email_entry.config(state='normal' if state else 'readonly')
-    gender_combobox.config(state='normal' if state else 'readonly')
-    country_entry.config(state='normal' if state else 'readonly')
-    id_entry.config(state='normal' if state else 'readonly')
-    upload_profile_btn.config(state='normal' if state else 'disabled')
-    upload_license_btn.config(state='normal' if state else 'disabled')
-    save_btn.config(state='normal' if state else 'disabled')
-    edit_btn.config(state='disabled' if state else 'normal')
+    username_entry.configure(state='normal' if state else 'readonly')
+    email_entry.configure(state='normal' if state else 'readonly')
+    gender_combobox.configure(state='normal' if state else 'readonly')
+    country_entry.configure(state='normal' if state else 'readonly')
+    id_entry.configure(state='normal' if state else 'readonly')
+    upload_profile_btn.configure(state='normal' if state else 'disabled')
+    upload_license_btn.configure(state='normal' if state else 'disabled')
+    save_btn.configure(state='normal' if state else 'disabled')
+    edit_btn.configure(state='disabled' if state else 'normal')
 
 # Functions to upload files
 def upload_profile_picture():
@@ -171,78 +183,86 @@ def log_out():
 def open_home():
     root.destroy()
 
-
 # Function to change button color on hover
 def on_hover(button, color):
-    button['bg'] = color
+    button.configure(bg_color=color)
 
 def on_leave(button, color):
-    button['bg'] = color
+    button.configure(bg_color=color)
 
 # GUI setup
-root = tk.Tk()
+root = ctk.CTk()
 root.title("User Profile")
 root.geometry("1100x700")
 
 # Create main canvas
-canvas = tk.Canvas(root, width=1000, height=700)
+canvas = ctk.CTkCanvas(root, width=1000, height=700)
 canvas.pack(fill='both', expand=True)
 
 # Header buttons
-home_button = tk.Button(root, bg="#1572D3",width=15, text="Back to Home", fg="white", font=("Poppins", 12, "bold"), command=open_home)
+home_button = ctk.CTkButton(root, text="Back to Home", text_color="white", font=("Poppins", 12, "bold"), command=open_home)
 home_button.bind("<Enter>", lambda event: on_hover(home_button, "#1058A7"))
 home_button.bind("<Leave>", lambda event: on_leave(home_button, "#1572D3"))
 canvas.create_window(50, 40, anchor="nw", window=home_button)
 
-log_out_button = tk.Button(root, bg="#1572D3",width=12, text="Log Out", fg="white", font=("Poppins", 12, "bold"), command=log_out)
+log_out_button = ctk.CTkButton(root, text="Log Out", text_color="white", font=("Poppins", 12, "bold"), command=log_out)
 log_out_button.bind("<Enter>", lambda event: on_hover(log_out_button, "#1058A7"))
 log_out_button.bind("<Leave>", lambda event: on_leave(log_out_button, "#1572D3"))
-canvas.create_window(940, 40, anchor="nw", window=log_out_button)
+canvas.create_window(1160, 40, anchor="nw", window=log_out_button)
 
 # User information fields
-username_entry = ttk.Entry(root, width=40)
-email_entry = ttk.Entry(root, width=40)
-gender_combobox = ttk.Combobox(root, values=["Male", "Female", "Other"], width=40, state='readonly')
-country_entry = ttk.Entry(root, width=40)
-id_entry = ttk.Entry(root, width=40)
+username_entry = ctk.CTkEntry(root, width=300, height=40)
+email_entry = ctk.CTkEntry(root, width=300, height=40)
+gender_combobox = ctk.CTkComboBox(root, values=["Male", "Female", "Other"], width=300, height=40)
+country_entry = ctk.CTkEntry(root, width=300, height=40)
+id_entry = ctk.CTkEntry(root, width=300, height=40)
 
 # Profile picture and driving license image labels
-profile_picture_label = tk.Label(root, bg="white", width=130, height=130)
-driving_license_label = tk.Label(root, bg="white", width=150, height=100)
+profile_picture_label = ctk.CTkLabel(root, width=130, height=130)
+driving_license_label = ctk.CTkLabel(root, width=130, height=130)
 
 # Add blue rectangle (header) decoration
-canvas.create_rectangle(0, 0, 1500, 260, fill="#1572D3", outline="")
+canvas.create_rectangle(0, 0, 1500, 320, fill="#1572D3", outline="")
 
-# Layout
-canvas.create_window(200, 300, window=ttk.Label(root, text="Username", font=("Poppins", 10)))
-canvas.create_window(315, 330, window=username_entry,width=300, height=40)
-canvas.create_window(700, 300, window=ttk.Label(root, text="Email", font=("Poppins", 10)))
-canvas.create_window(830, 330, window=email_entry,width=300, height=40)
-canvas.create_window(190, 400, window=ttk.Label(root, text="Gender", font=("Poppins", 10)))
-canvas.create_window(317, 430, window=gender_combobox,width=300, height=40)
-canvas.create_window(700, 400, window=ttk.Label(root, text="Country", font=("Poppins", 10)))
-canvas.create_window(825, 430, window=country_entry,width=300, height=40)
-canvas.create_window(710, 500, window=ttk.Label(root, text="ID Number", font=("Poppins", 10)))
-canvas.create_window(830, 530, window=id_entry,width=300, height=40)
+# Layout for labels and entry fields
+canvas.create_window(255, 370, window=ctk.CTkLabel(root, text="Username", font=("Poppins", 10)))
+canvas.create_window(410, 420, window=username_entry)
+
+canvas.create_window(840, 370, window=ctk.CTkLabel(root, text="Email", font=("Poppins", 10)))
+canvas.create_window(1000, 420, window=email_entry)
+
+canvas.create_window(245, 500, window=ctk.CTkLabel(root, text="Gender", font=("Poppins", 10)))
+canvas.create_window(410, 550, window=gender_combobox)
+
+canvas.create_window(840, 500, window=ctk.CTkLabel(root, text="Country", font=("Poppins", 10)))
+canvas.create_window(1000, 550, window=country_entry)
+
+canvas.create_window(850, 640, window=ctk.CTkLabel(root, text="ID Number", font=("Poppins", 10)))
+canvas.create_window(1000, 690, window=id_entry)
 
 # Display profile picture and driving license images
-canvas.create_window(220, 180, window=profile_picture_label)
-canvas.create_window(240, 550, window=driving_license_label)
+canvas.create_window(300, 220, window=profile_picture_label)
+canvas.create_window(300, 690, window=driving_license_label)
 
 # Buttons for uploading files
-upload_profile_btn = ttk.Button(root, text="Upload Profile Picture", command=upload_profile_picture)
-canvas.create_window(360, 195, window=upload_profile_btn)
-upload_license_btn = ttk.Button(root, text="Upload Driving License", command=upload_driving_license)
-canvas.create_window(390, 550, window=upload_license_btn)
+upload_profile_btn = ctk.CTkButton(root, text="Upload Profile Picture", command=upload_profile_picture)
+canvas.create_window(490, 220, window=upload_profile_btn)
+
+upload_license_btn = ctk.CTkButton(root, text="Upload Driving License", command=upload_driving_license)
+canvas.create_window(490, 690, window=upload_license_btn)
 
 # Edit and Save buttons
-edit_btn = tk.Button(root, width=10, height=2,text="Edit", bg="#1572D3", fg="white", font=("Arial", 12, "bold"),command=lambda: toggle_edit(True))
-save_btn = tk.Button(root, width=10, height=2,text="Save", bg="#1572D3", fg="white", font=("Arial", 12, "bold"), command=save_to_database)
-canvas.create_window(850, 200, window=edit_btn)
-canvas.create_window(980, 200, window=save_btn)
+edit_btn = ctk.CTkButton(root, width=100, height=20, text="Edit", bg_color="#1572D3", text_color="white", font=("Arial", 12, "bold"), command=lambda: toggle_edit(True))
+save_btn = ctk.CTkButton(root, width=100, height=20, text="Save", bg_color="#1572D3", text_color="white", font=("Arial", 12, "bold"), command=save_to_database)
+canvas.create_window(1100, 300, window=edit_btn)
+canvas.create_window(1250, 300, window=save_btn)
 
 # Initialize UI
 toggle_edit(False)  # Disable editing by default
 load_user_data()  # Load the user's data into the fields
+
+
+print(f"Profile Picture Path: {profile_picture_path}")
+print(f"Driving License Path: {driving_license_path}")
 
 root.mainloop()

@@ -47,9 +47,7 @@ def proceed_to_payment():
 
 
 def go_to_home():
-    process = subprocess.Popen(["python", "Home.py"])
-    print("Home opened with process ID:", process.pid)
-    booking_window.after(400, booking_window.destroy)
+    booking_window.destroy()
 
 
 def cancel_booking():

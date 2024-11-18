@@ -155,9 +155,6 @@ def open_bookingdetails():
     process = subprocess.Popen(["python", "Booking details.py"])
     print("Booking details opened with process ID:", process.pid)
 
-    # Delay the close of the current window
-    root.after(400, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
-
 # Function to handle logout
 def log_out():
     Session.clear_user_session()
