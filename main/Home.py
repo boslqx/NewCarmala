@@ -437,16 +437,34 @@ logout_button.bind("<Enter>", lambda event: on_hover(logout_button, "#1058A7"))
 logout_button.bind("<Leave>", lambda event: on_leave(logout_button, "#1572D3"))
 canvas.create_window(1100, 40, anchor="nw", window=logout_button)
 
-# create Promotions button
-chat_button = tk.Button(root, bg="#28A745", fg = 'white', text="Chat with Us", font=("Poppins", 12, 'bold'),width=20, height=5, command=open_chatbox)
-chat_button.bind("<Enter>", lambda event: on_hover(chat_button, "#218838"))
-chat_button.bind("<Leave>", lambda event: on_leave(chat_button, "#28A745"))
-canvas.create_window(100, 400, anchor="nw", window=chat_button)
+# Load images for buttons
+chat_image_path = r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-11-19 163838.png"
+rateus_image_path = r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-11-19 164055.png"
 
-# create Rate Us! button
-rateus_button = tk.Button(root, bg="#FFC107", fg = 'white', text="Rate Us", font=("Poppins", 12,'bold'),width=20, height=5, command=open_rating_window)
-rateus_button.bind("<Enter>", lambda event: on_hover(rateus_button, "#E0A800"))
-rateus_button.bind("<Leave>", lambda event: on_leave(rateus_button, "#FFC107"))
+chat_image = Image.open(chat_image_path)
+chat_photo = ImageTk.PhotoImage(chat_image.resize((120, 120)))  # Resize as needed
+
+rateus_image = Image.open(rateus_image_path)
+rateus_photo = ImageTk.PhotoImage(rateus_image.resize((180, 110)))  # Resize as needed
+
+# Create Chat with Us button using image
+chat_button = tk.Button(
+    root,
+    image=chat_photo,
+    command=open_chatbox,
+    bd=0,
+    highlightthickness=0
+)
+canvas.create_window(125, 400, anchor="nw", window=chat_button)
+
+# Create Rate Us! button using image
+rateus_button = tk.Button(
+    root,
+    image=rateus_photo,
+    command=open_rating_window,
+    bd=0,
+    highlightthickness=0
+)
 canvas.create_window(300, 400, anchor="nw", window=rateus_button)
 
 
