@@ -37,7 +37,7 @@ ctk.set_default_color_theme("blue")  # Set default color theme
 
 root = ctk.CTk()
 root.title("Become a renter")
-root.geometry("1105x710")  # Set window size to 1280x780
+root.geometry("1280x710")  # Set window size to 1280x780
 
 # Set up a frame for the canvas and scrollbar
 frame = ctk.CTkFrame(root)
@@ -82,8 +82,8 @@ image_paths = [
 loaded_images = []
 
 # Set each image to fill the window size (1280x780)
-window_width = 1380
-window_height = 880
+window_width = 1280
+window_height = 710
 
 for idx, image_path in enumerate(image_paths):
     img = Image.open(image_path)
@@ -109,7 +109,7 @@ back_to_top_button = ctk.CTkButton(
 )
 back_to_top_button.bind("<Enter>", lambda event: on_hover(back_to_top_button, "#1058A7"))
 back_to_top_button.bind("<Leave>", lambda event: on_leave(back_to_top_button, "#1572D3"))
-canvas.create_window(580, len(image_paths) * window_height - 70, anchor="nw", window=back_to_top_button)
+canvas.create_window(550, len(image_paths) * window_height - 70, anchor="nw", window=back_to_top_button)
 
 # Start the main loop
 root.mainloop()

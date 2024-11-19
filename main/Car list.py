@@ -54,7 +54,7 @@ def get_available_cars(location, pickup_date, return_date):
                    c.CarTransmission, c.CarFeatures, c.CarPrice, c.CarImage
             FROM CarList AS c
             LEFT JOIN Booking AS b ON c.CarID = b.CarID
-            WHERE c.CarLocation = ?
+            WHERE LOWER(c.CarLocation) = LOWER(?)
               AND (b.PickupDate IS NULL OR b.DropoffDate IS NULL 
                    OR b.DropoffDate < ? OR b.PickupDate > ?)
         ''', (location, pickup_date, return_date))

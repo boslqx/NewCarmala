@@ -32,7 +32,7 @@ def scroll_to_top():
 # Create a window with a specific geometry
 root = ctk.CTk()
 root.title("How it Works")
-root.geometry("1100x680")  # Set window size to 1280x780
+root.geometry("1280x710")  # Set window size to 1280x780
 
 # Set up a frame for the canvas and scrollbar using CustomTkinter
 frame = ctk.CTkFrame(root)
@@ -81,8 +81,8 @@ loaded_images = []
 image_objects = []  # Store image references to avoid garbage collection
 
 # Set each image to fill the window size (1280x780)
-window_width = 1380
-window_height = 780
+window_width = 1280
+window_height = 710
 
 # Load and display images directly on the canvas using create_image
 for idx, image_path in enumerate(image_paths):
