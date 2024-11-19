@@ -15,22 +15,21 @@ import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import pandas as pd
+from AdminSession import get_admin_session, set_admin_session
 
 
 # Global variable to store the session file path
 SESSION_FILE = "AdminSession.json"
 
 def open_admin_page():
-    # Retrieve logged-in admin session data
     logged_in_admin = get_admin_session()
+    if logged_in_admin:
+        print(f"Welcome, {logged_in_admin['username']} (Admin ID: {logged_in_admin['admin_id']})")
+        # Proceed to the admin page
+        admin_panel_setup()
+    else:
+        messagebox.showerror("Access Denied", "Please log in to access the admin panel.")
 
-    # Check if the admin session exists
-    if not logged_in_admin:
-        messagebox.showerror("Access Denied", "Please log in as an admin first.")
-        return
-
-    print(f"Logged in admin details: Admin ID = {logged_in_admin['admin_id']}, Username = {logged_in_admin['username']}")
-    os.system('python Adminpage.py')
 
 
 # Example function to display admin information
@@ -42,54 +41,20 @@ def show_admin_info():
     else:
         print("No admin is currently logged in.")
 
-def login():
-    username = entry_username.get()
-    password = entry_password.get()
-
-    print("Login attempt:", username, password)  # Debug print
-
-    # Admin login check
-    if username == "admin" and password == "adminpass":
-        admin_id = 5  # Replace with the actual admin ID from the database
-        admin_data = {
-            "admin_id": admin_id,
-            "username": username,
-            "role": "admin"
-        }
-        set_admin_session(admin_data)
-        print("Admin session data saved:", admin_data)  # Debug print
-        open_admin_page()
-
-    # Regular user login check
-    elif username == "user" and password == "pass":
-        user_id = 10  # Replace with the actual user ID from the database
-        user_data = {
-            "user_id": user_id,
-            "username": username,
-            "role": "user"
-        }
-        set_user_session(user_data)
-        print("User session data saved:", user_data)  # Debug print
-        messagebox.showinfo("Login Successful", "Welcome!")
-
-    else:
-        print("Login failed.")  # Debug print
-        messagebox.showerror("Login Failed", "Incorrect username or password.")
-
-# Simulate admin login
-def admin_login(admin_id):
-    global current_admin_id
-    current_admin_id = 1  # Replace with the actual AdminID
-    print(f"Admin logged in with ID: {current_admin_id}")
-admin_login(3)  # Example admin
-print(current_admin_id)  # Should print 3
 
 
 
-# Function to set user session (store in session.json)
-def set_user_session(user_data):
-    with open(SESSION_FILE, "w") as file:
-        json.dump(user_data, file)
+ADMIN_SESSION_FILE = r"C:\Users\User\admin_session.json"
+
+def set_admin_session(admin_data):
+    try:
+        print("Writing session data:", admin_data)  # Debugging print
+        with open(ADMIN_SESSION_FILE, "w") as file:
+            json.dump(admin_data, file)
+        print(f"Session data written to {ADMIN_SESSION_FILE}.")
+    except Exception as e:
+        print(f"Error writing session data: {e}")
+
 
 # Function to get user session (retrieve from session.json)
 def get_user_session():
@@ -129,6 +94,13 @@ def open_admin_panel():
     display_revenue_chart()
     display_car_usage_pie_chart()
 
+def check_session():
+    admin_session = get_admin_session()
+    print("Session data:", admin_session)
+    if admin_session:
+        print(f"Logged in as Admin ID {admin_session['admin_id']} ({admin_session['username']})")
+    else:
+        print("No admin logged in.")
 
 # Function to place buttons in the admin panel
 def place_buttons_on_image():
@@ -450,27 +422,42 @@ def display_car_usage_pie_chart():
         )
 
 
-
-# Function to display car availability data
 def display_car_availability():
-    admin_frame.pack_forget()  # Hide admin panel
-    car_availability_frame.pack(fill=tk.BOTH, expand=True)  # Show the car availability frame
+    admin_session = get_admin_session()
+    if not admin_session:
+        messagebox.showerror("Error", "You must be logged in as an admin to view cars.")
+        return
 
-    # Clear previous entries from Car Treeview
+    admin_id = admin_session["admin_id"]  # Retrieve AdminID from session
+    print(f"Admin ID from session: {admin_id}")  # Debugging print
+
+    car_availability_frame.pack(fill=tk.BOTH, expand=True)  # Show the car availability frame
+    admin_frame.pack_forget()  # Hide admin panel
+
+    # Clear previous entries
     for row in car_tree.get_children():
         car_tree.delete(row)
 
-    # Fetch data from the database
-    conn = sqlite3.connect(R"C:\Users\User\Downloads\Carmala\main\Carmala.db")  # Replace with your actual DB path
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM CarList")  # Adjust the query to match your table structure
-    rows = cursor.fetchall()
+    try:
+        conn = sqlite3.connect("Carmala.db")  # Replace with your actual DB path
+        cursor = conn.cursor()
 
-    # Insert data into the Car Treeview
-    for row in rows:
-        car_tree.insert("", tk.END, values=row)
+        # Query to fetch cars associated with the AdminID
+        cursor.execute("""
+            SELECT * FROM CarList WHERE AdminID = ?
+        """, (admin_id,))
+        rows = cursor.fetchall()
 
-    conn.close()
+        if rows:
+            for row in rows:
+                car_tree.insert("", tk.END, values=row)
+        else:
+            print(f"No cars found for AdminID {admin_id}.")  # Debugging
+
+        conn.close()
+
+    except sqlite3.Error as e:
+        messagebox.showerror("Database Error", f"An error occurred: {e}")
 
 
 def display_agencies_frame():
@@ -654,39 +641,38 @@ def open_add_car_form():
     submit_button = tk.Button(add_car_window, text="Add Car", command=lambda: add_car(entry_car_name.get(),entry_car_location.get(),entry_car_capacity.get(), entry_car_fueltype.get(),entry_car_transmission.get(),entry_car_features.get(),entry_car_price.get(),entry_car_image.get(),add_car_window))
     submit_button.pack(pady=20)
 
-# Example usage: Call this function on logout
 def logout():
-    clear_user_session()
+    if os.path.exists(ADMIN_SESSION_FILE):
+        os.remove(ADMIN_SESSION_FILE)
     messagebox.showinfo("Logged Out", "You have successfully logged out.")
+    root.destroy()  # Close the application
 
 
 def add_car(name, location, capacity, fueltype, transmission, features, price, image_url, window):
-    if not all([name, location, capacity, fueltype, transmission, features, price, image_url]):
-        messagebox.showerror("Error", "All fields must be filled out!")
+    admin_session = get_admin_session()
+    if not admin_session:
+        messagebox.showerror("Error", "You must be logged in as an admin to add cars.")
         return
 
+    admin_id = admin_session["admin_id"]  # Get the AdminID from the session
+
     try:
-        conn = sqlite3.connect(R"C:\Users\User\Downloads\Carmala\main\Carmala.db")
+        conn = sqlite3.connect("Carmala.db")
         cursor = conn.cursor()
 
-        # Insert new car details into CarList (adjust table/column names as necessary)
+        # Insert new car with AdminID
         cursor.execute("""
             INSERT INTO CarList (CarName, CarLocation, CarCapacity, CarFueltype, CarTransmission, CarFeatures, CarPrice, CarImage, AdminID)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-        name, location, capacity, fueltype, transmission, features, price, image_url, 1))  # Adjust `admin_id` if needed
+        """, (name, location, capacity, fueltype, transmission, features, price, image_url, admin_id))
 
         conn.commit()
-
-        # Insert new car into Treeview
-        car_tree.insert("", tk.END, values=(
-        cursor.lastrowid, name, location, capacity, fueltype, transmission, features, price, image_url, 1))
-
+        window.destroy()  # Close the add car window
         messagebox.showinfo("Success", "Car added successfully!")
-        window.destroy()  # Close the add car window after submission
 
-    except sqlite3.OperationalError as e:
-        messagebox.showerror("Database Error", str(e))
+    except sqlite3.Error as e:
+        messagebox.showerror("Database Error", f"An error occurred: {e}")
+
     finally:
         conn.close()
 
@@ -790,146 +776,77 @@ def edit_car(car_id, name, location, capacity, fueltype, transmission, features,
     messagebox.showinfo("Edit Car", "Car details updated successfully.")
 
 def display_booking_history():
-    admin_frame.pack_forget()  # Hide admin panel
-    booking_history_frame.pack(fill=tk.BOTH, expand=True)  # Show booking history frame
+    admin_session = get_admin_session()
+    if not admin_session:
+        messagebox.showerror("Error", "You must be logged in as an admin to view booking history.")
+        return
 
-    # Clear previous entries from Booking Treeview
+    admin_id = admin_session["admin_id"]  # Retrieve AdminID from session
+    booking_history_frame.pack(fill=tk.BOTH, expand=True)  # Show booking history frame
+    admin_frame.pack_forget()  # Hide admin panel
+
+    # Clear previous entries
     for row in booking_tree.get_children():
         booking_tree.delete(row)
 
-    # Fetch data from the database
-    conn = sqlite3.connect(R"C:\Users\User\Downloads\Carmala\main\Carmala.db")  # Replace with your actual DB path
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM BookingHistory")  # Fetch all records from the BookingHistory table
-    rows = cursor.fetchall()
-
-    # Insert data into the Booking Treeview
-    for row in rows:
-        booking_tree.insert("", tk.END, values=row)
-
-    conn.close()
-def view_booking_history():
     try:
-        global current_admin_id
-        if not current_admin_id:
-            print("AdminID is not set. Please log in.")
-            return
-
-        conn = sqlite3.connect('your_database.db')
+        conn = sqlite3.connect("Carmala.db")  # Replace with your actual DB path
         cursor = conn.cursor()
 
-        # Fetch booking history for the logged-in admin
-        query = "SELECT * FROM BookingHistory WHERE AdminID = ?"
-        cursor.execute(query, (current_admin_id,))
+        # Query to fetch booking history associated with the AdminID
+        cursor.execute("""
+            SELECT HistoryID, BookingID, PickupDate, DropoffDate
+            FROM BookingHistory
+            WHERE AdminID = ?
+        """, (admin_id,))
+        rows = cursor.fetchall()
 
-        history = cursor.fetchall()
-        if history:
-            print("Booking History:")
-            for record in history:
-                print(record)
-        else:
-            print("No booking history found for this AdminID.")
-
-        conn.close()
-    except Exception as e:
-        print(f"Error: {e}")
-
-def view_admin_cars():
-    try:
-        # Ensure AdminID is set
-        global current_admin_id
-        if not current_admin_id:
-            print("AdminID is not set. Please log in.")
-            return
-
-        # Connect to the database
-        conn = sqlite3.connect('your_database.db')  # Update with your database path
-        cursor = conn.cursor()
-
-        # Fetch cars for the logged-in admin
-        query = "SELECT * FROM CarList WHERE AdminID = ?"
-        cursor.execute(query, (current_admin_id,))
-
-        cars = cursor.fetchall()
-        if cars:
-            print("Cars managed by Admin:")
-            for car in cars:
-                print(car)  # Customize output formatting as needed
-        else:
-            print("No cars found for this AdminID.")
+        # Insert data into the Booking Treeview
+        for row in rows:
+            booking_tree.insert("", tk.END, values=row)
 
         conn.close()
-    except Exception as e:
-        print(f"Error: {e}")
-def view_pending_bookings():
-    try:
-        global current_admin_id
-        if not current_admin_id:
-            print("AdminID is not set. Please log in.")
-            return
 
-        conn = sqlite3.connect('your_database.db')
-        cursor = conn.cursor()
+    except sqlite3.Error as e:
+        messagebox.showerror("Database Error", f"An error occurred: {e}")
 
-        # Fetch pending bookings for the logged-in admin
-        query = "SELECT * FROM Booking WHERE AdminID = ? AND BookingStatus = 'Pending'"
-        cursor.execute(query, (current_admin_id,))
 
-        bookings = cursor.fetchall()
-        if bookings:
-            print("Pending Bookings:")
-            for booking in bookings:
-                print(booking)
-        else:
-            print("No pending bookings for this AdminID.")
-
-        conn.close()
-    except Exception as e:
-        print(f"Error: {e}")
 
 def display_pending_bookings():
-    admin_frame.pack_forget()  # Hide admin panel
-    pending_bookings_frame.pack(fill=tk.BOTH, expand=True)  # Show the pending bookings frame
+    admin_session = get_admin_session()
+    if not admin_session:
+        messagebox.showerror("Error", "You must be logged in as an admin to view bookings.")
+        return
 
-    # Clear previous entries from the Treeview
+    admin_id = admin_session["admin_id"]  # Retrieve AdminID from session
+    pending_bookings_frame.pack(fill=tk.BOTH, expand=True)  # Show the pending bookings frame
+    admin_frame.pack_forget()  # Hide admin panel
+
+    # Clear previous entries
     for row in pending_bookings_tree.get_children():
         pending_bookings_tree.delete(row)
 
-    conn = sqlite3.connect("Carmala.db")  # Use your actual DB path
-    cursor = conn.cursor()
-    cursor.execute("SELECT BookingID, UserID, CarID, PickupDate, DropoffDate, BookingStatus FROM Booking WHERE BookingStatus = 'Pending'")  # Adjust the query if needed
-    rows = cursor.fetchall()
-
-    # Insert data into the Pending Bookings Treeview
-    for row in rows:
-        pending_bookings_tree.insert("", tk.END, values=row)
-
-    conn.close()
-def view_pending_bookings():
     try:
-        global current_admin_id
-        if not current_admin_id:
-            print("AdminID is not set. Please log in.")
-            return
-
-        conn = sqlite3.connect('your_database.db')
+        conn = sqlite3.connect("Carmala.db")  # Replace with your actual DB path
         cursor = conn.cursor()
 
-        # Fetch pending bookings for the logged-in admin
-        query = "SELECT * FROM Booking WHERE AdminID = ? AND BookingStatus = 'Pending'"
-        cursor.execute(query, (current_admin_id,))
+        # Filter bookings where AdminID matches
+        cursor.execute("""
+            SELECT BookingID, UserID, CarID, PickupDate, DropoffDate, BookingStatus
+            FROM Booking
+            WHERE BookingStatus = 'Pending' AND AdminID = ?
+        """, (admin_id,))
+        rows = cursor.fetchall()
 
-        bookings = cursor.fetchall()
-        if bookings:
-            print("Pending Bookings:")
-            for booking in bookings:
-                print(booking)
-        else:
-            print("No pending bookings for this AdminID.")
+        # Insert data into the Pending Bookings Treeview
+        for row in rows:
+            pending_bookings_tree.insert("", tk.END, values=row)
 
         conn.close()
-    except Exception as e:
-        print(f"Error: {e}")
+
+    except sqlite3.Error as e:
+        messagebox.showerror("Database Error", f"An error occurred: {e}")
+
 
 # --- MAIN WINDOW SETUP --- #
 root = tk.Tk()
@@ -966,10 +883,7 @@ label_password.pack()
 entry_password = tk.Entry(login_frame, show="*")
 entry_password.pack(pady=5)
 
-button_login = tk.Button(login_frame, text="Log in", font="Poppins", command=login, bg="#1572D3")
-button_login.pack(pady=20)
-# Edit car button in the Car Availability frame (adjust size)
-# Edit car button in the Car Availability frame (adjust size and color)
+
 
 def send_email_notification(to_email, subject, message):
     sender_email = "killerpill585@gmail.com"
