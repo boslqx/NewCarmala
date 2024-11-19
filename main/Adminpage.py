@@ -4,46 +4,72 @@ from tkinter import ttk
 from PIL import Image, ImageTk
 import sqlite3
 import os
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from datetime import datetime
+from matplotlib.patches import Patch
+import random
+import json
+import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import pandas as pd
+from AdminSession import get_admin_session, set_admin_session
 
 
-# Global variable to store logged-in admin
-logged_in_admin = None
+# Global variable to store the session file path
+SESSION_FILE = "AdminSession.json"
 
-
-# Function to open the admin page (replace with actual home page code)
 def open_admin_page():
-    # Debug print to verify admin details
+    logged_in_admin = get_admin_session()
     if logged_in_admin:
-        print(f"Logged in admin details: {logged_in_admin}")
+        print(f"Welcome, {logged_in_admin['username']} (Admin ID: {logged_in_admin['admin_id']})")
+        # Proceed to the admin page
+        admin_panel_setup()
     else:
-        print("No admin is currently logged in.")
-
-    os.system('python Adminpage.py')  # This will execute the Adminpage.py script
+        messagebox.showerror("Access Denied", "Please log in to access the admin panel.")
 
 
-# Example of how to use the logged-in admin information
+
+# Example function to display admin information
 def show_admin_info():
+    logged_in_admin = get_admin_session()
+
     if logged_in_admin:
-        print(f"Logged in as: {logged_in_admin[1]}")  # Example of accessing the admin name
+        print(f"Logged in as: {logged_in_admin['username']}, Admin ID: {logged_in_admin['admin_id']}")
     else:
         print("No admin is currently logged in.")
 
-# Function to handle login
-def login():
-    username = entry_username.get()
-    password = entry_password.get()
-
-    # Check if the user is admin or regular user
-    if username == "admin" and password == "adminpass":
-        open_admin_panel()
-    elif username == "user" and password == "pass":
-        messagebox.showinfo("Login Successful", "Welcome!")
-    else:
-        messagebox.showerror("Login Failed", "Incorrect username or password.")
 
 
-# Function to open the admin panel
+
+ADMIN_SESSION_FILE = r"C:\Users\User\admin_session.json"
+
+def set_admin_session(admin_data):
+    try:
+        print("Writing session data:", admin_data)  # Debugging print
+        with open(ADMIN_SESSION_FILE, "w") as file:
+            json.dump(admin_data, file)
+        print(f"Session data written to {ADMIN_SESSION_FILE}.")
+    except Exception as e:
+        print(f"Error writing session data: {e}")
+
+
+# Function to get user session (retrieve from session.json)
+def get_user_session():
+    if os.path.exists(SESSION_FILE):
+        with open(SESSION_FILE, "r") as file:
+            return json.load(file)
+    return None  # If the file does not exist, no user is logged in
+
+# Function to clear user session (delete session.json)
+def clear_user_session():
+    if os.path.exists(SESSION_FILE):
+        os.remove(SESSION_FILE)
+        print("Session cleared.")
+
+
 def open_admin_panel():
     # Hide the login frame and display the admin panel
     login_frame.pack_forget()
@@ -53,7 +79,7 @@ def open_admin_panel():
     right_frame.pack_forget()
 
     # Load and set admin-specific image background
-    admin_image_path = r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-11-15 220908.png" # Add your path
+    admin_image_path = r"C:\Users\User\Downloads\Group 4.png"  # Add your path
     admin_image = Image.open(admin_image_path)
     admin_image = admin_image.resize((1280, 780), Image.LANCZOS)
     admin_photo = ImageTk.PhotoImage(admin_image)
@@ -63,6 +89,18 @@ def open_admin_panel():
     # Position buttons on the admin panel
     place_buttons_on_image()
 
+    # Display the statistics chart on the right side
+    display_statistics_chart()
+    display_revenue_chart()
+    display_car_usage_pie_chart()
+
+def check_session():
+    admin_session = get_admin_session()
+    print("Session data:", admin_session)
+    if admin_session:
+        print(f"Logged in as Admin ID {admin_session['admin_id']} ({admin_session['username']})")
+    else:
+        print("No admin logged in.")
 
 # Function to place buttons in the admin panel
 def place_buttons_on_image():
@@ -74,27 +112,352 @@ def place_buttons_on_image():
     button_agencies.place(x=65, y=355, width=180, height=40)
     button_settings.place(x=65, y=405, width=180, height=40)
 
+# Function to get statistics data
+def get_statistics_data():
+    try:
+        # Connect to the database
+        conn = sqlite3.connect(R"C:\Users\User\Downloads\Carmala\main\Carmala.db")
+        cursor = conn.cursor()
 
-# Function to display car availability data
+        # Query to get the total number of bookings
+        cursor.execute("SELECT COUNT(*) FROM Booking")
+        total = cursor.fetchone()[0]
+
+        # Query to get the number of approved bookings
+        cursor.execute("SELECT COUNT(*) FROM Booking WHERE BookingStatus = 'Approved'")
+        approved = cursor.fetchone()[0]
+
+        # Query to get the number of rejected bookings
+        cursor.execute("SELECT COUNT(*) FROM Booking WHERE BookingStatus = 'Rejected'")
+        rejected = cursor.fetchone()[0]
+
+        # Close the connection
+        conn.close()
+
+        return total, approved, rejected
+
+    except sqlite3.Error as e:
+        messagebox.showerror("Database Error", f"An error occurred while fetching statistics data: {e}")
+        return 0, 0, 0
+
+# Function to display statistics chart on the right side of the admin panel
+def display_statistics_chart():
+    total, approved, rejected = get_statistics_data()
+
+    from matplotlib.figure import Figure
+    from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
+    # Create a Matplotlib figure for the chart
+    fig = Figure(figsize=(4, 3), dpi=100)
+    ax = fig.add_subplot(111)
+
+    # Data for the chart
+    labels = ['Total', 'Approved', 'Rejected']
+    values = [total, approved, rejected]
+    colors = ['#4CAF50', '#2196F3', '#F44336']
+
+    # Create a bar chart
+    bars = ax.bar(labels, values, color=colors)
+
+    # Set chart title and labels
+    ax.set_title("Booking Statistics")
+    ax.set_ylabel("Number of Bookings")
+
+    # Display the value on top of each bar
+    for bar in bars:
+        height = bar.get_height()
+        ax.annotate(f'{int(height)}', xy=(bar.get_x() + bar.get_width() / 2, height),
+                    xytext=(0, 3), textcoords="offset points", ha='center', va='bottom')
+
+    # Create a canvas to display the chart in Tkinter
+    canvas = FigureCanvasTkAgg(fig, master=admin_frame)
+    canvas.draw()
+    canvas.get_tk_widget().place(x=850, y=150, width=400, height=400)
+
+
+def display_statistics():
+    total, approved, rejected = get_statistics_data()
+
+    # Create a frame for statistics
+    statistics_frame = tk.Frame(admin_frame, bg="#F1F1F1", bd=2, relief=tk.RAISED)
+    statistics_frame.place(x=850, y=150, width=350, height=200)
+
+    # Title label
+    title_label = tk.Label(statistics_frame, text="Booking Statistics", font=("Arial", 14, "bold"), bg="#F1F1F1")
+    title_label.pack(pady=10)
+
+    # Total bookings label
+    total_label = tk.Label(statistics_frame, text=f"Total Bookings: {total}", font=("Arial", 12), bg="#F1F1F1")
+    total_label.pack(pady=5)
+
+    # Approved bookings label
+    approved_label = tk.Label(statistics_frame, text=f"Approved Bookings: {approved}", font=("Arial", 12), bg="#F1F1F1")
+    approved_label.pack(pady=5)
+
+    # Rejected bookings label
+    rejected_label = tk.Label(statistics_frame, text=f"Rejected Bookings: {rejected}", font=("Arial", 12), bg="#F1F1F1")
+    rejected_label.pack(pady=5)
+
+# Function to get revenue statistics data
+def get_revenue_statistics():
+    try:
+        # Connect to the database
+        conn = sqlite3.connect(R"C:\Users\User\Downloads\Carmala\main\Carmala.db")
+        cursor = conn.cursor()
+
+        # Query to calculate the total revenue
+        cursor.execute("SELECT SUM(amount) FROM PaymentTable")
+        total_revenue = cursor.fetchone()[0] or 0  # Default to 0 if no data
+
+        # Query to calculate revenue for specific periods (e.g., monthly)
+        cursor.execute("""
+            SELECT strftime('%Y-%m', Date) as Month, SUM(amount)
+            FROM PaymentTable
+            GROUP BY Month
+            ORDER BY Month
+        """)
+        monthly_revenue = cursor.fetchall()
+
+        # Close the connection
+        conn.close()
+
+        return total_revenue, monthly_revenue
+
+    except sqlite3.Error as e:
+        messagebox.showerror("Database Error", f"An error occurred while fetching revenue data: {e}")
+        return 0, []
+
+# Function to display the revenue statistics chart
+def display_revenue_chart():
+    total_revenue, monthly_revenue = get_revenue_statistics()
+
+    from matplotlib.figure import Figure
+    from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
+    # Create a Matplotlib figure for the revenue chart
+    fig = Figure(figsize=(4, 3), dpi=100)
+    ax = fig.add_subplot(111)
+
+    # Data for the chart
+    months = [row[0] for row in monthly_revenue]
+    revenues = [row[1] for row in monthly_revenue]
+    colors = ['#FFD700' for _ in months]  # Gold color for revenue bars
+
+    # Create a bar chart for monthly revenue
+    bars = ax.bar(months, revenues, color=colors)
+
+    # Set chart title and labels
+    ax.set_title("Lifetime Revenue Statistics")
+    ax.set_ylabel("Revenue (in $)")
+    ax.set_xlabel("Month")
+
+    # Rotate and adjust the size of the x-axis labels (months)
+    ax.tick_params(axis='x', rotation=0, labelsize=6)  # Rotate and reduce font size of x-axis labels
+
+    # Display the value on top of each bar
+    for bar in bars:
+        height = bar.get_height()
+        ax.annotate(f'${int(height):,}', xy=(bar.get_x() + bar.get_width() / 2, height),
+                    xytext=(0, 3), textcoords="offset points", ha='center', va='bottom')
+
+    # Create a canvas to display the chart in Tkinter
+    canvas = FigureCanvasTkAgg(fig, master=admin_frame)
+    canvas.draw()
+    canvas.get_tk_widget().place(x=850, y=150, width=400, height=300)
+
+
+def display_statistics_chart():
+    # Booking statistics chart
+    total, approved, rejected = get_statistics_data()
+
+    from matplotlib.figure import Figure
+    from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
+    # Create a Matplotlib figure for the chart
+    fig = Figure(figsize=(4, 3), dpi=100)
+    ax = fig.add_subplot(111)
+
+    # Data for the chart
+    labels = ['Total', 'Approved', 'Rejected']
+    values = [total, approved, rejected]
+    colors = ['#4CAF50', '#2196F3', '#F44336']
+
+    # Create a bar chart
+    bars = ax.bar(labels, values, color=colors)
+
+    # Set chart title and labels
+    ax.set_title("Booking Statistics")
+    ax.set_ylabel("Number of Bookings")
+
+    # Rotate and adjust the size of the x-axis labels (total, approved, rejected)
+    ax.tick_params(axis='x', rotation=0, labelsize=6)  # Rotate and reduce font size of x-axis labels
+
+    # Display the value on top of each bar
+    for bar in bars:
+        height = bar.get_height()
+        ax.annotate(f'{int(height)}', xy=(bar.get_x() + bar.get_width() / 2, height),
+                    xytext=(0, 3), textcoords="offset points", ha='center', va='bottom')
+
+    # Create a canvas to display the chart in Tkinter
+    canvas = FigureCanvasTkAgg(fig, master=admin_frame)
+    canvas.draw()
+    canvas.get_tk_widget().place(x=400, y=150, width=400, height=300)
+
+
+
+
+
+def display_pie_chart(data, labels, title, x, y, width=400, height=300):
+    """
+    Render a pie chart with a side legend for color-coded car representations.
+
+    :param data: List of values for the pie chart.
+    :param labels: List of labels corresponding to the data.
+    :param title: Title of the pie chart.
+    :param x: X-coordinate for the chart position.
+    :param y: Y-coordinate for the chart position.
+    :param width: Width of the pie chart area.
+    :param height: Height of the pie chart area.
+    """
+    # Generate distinct colors for the pie chart
+    colors = [
+        "#FF6384", "#36A2EB", "#FFCE56", "#4CAF50",
+        "#2196F3", "#F44336", "#9C27B0", "#00BCD4"
+    ]
+    while len(colors) < len(labels):
+        colors.append("#" + "".join(random.choice("0123456789ABCDEF") for _ in range(6)))
+
+    # Create a Matplotlib figure
+    fig = Figure(figsize=(5, 3), dpi=100)  # Increased width for side legend
+    ax = fig.add_subplot(111)
+
+    # Create the pie chart with reduced percentage size
+    wedges, texts, autotexts = ax.pie(
+        data,
+        labels=None,               # Labels will be displayed in the legend instead
+        autopct='%1.0f%%',         # Show integer percentages
+        startangle=90,             # Start pie from 12 o'clock
+        colors=colors,
+        textprops={'fontsize': 8}  # Reduce font size for percentages
+    )
+
+    # Add a title to the chart
+    ax.set_title(title, fontsize=14)
+
+    # Position the legend on the right side
+    fig.subplots_adjust(left=0.3)  # Adjust layout for side legend
+    ax.legend(
+        handles=[Patch(facecolor=colors[i], label=labels[i]) for i in range(len(labels))],
+        title="Cars",
+        loc='center left',
+        bbox_to_anchor=(1, 0.5),  # Move legend to the side
+        fontsize=8,               # Small font for legend
+        title_fontsize=10         # Slightly larger font for legend title
+    )
+
+    # Embed the chart in the Tkinter admin panel
+    canvas = FigureCanvasTkAgg(fig, master=admin_frame)
+    canvas.draw()
+    canvas.get_tk_widget().place(x=300, y=500, width=900, height=height)
+
+
+
+
+def get_car_usage_data():
+    """
+    Fetches car usage data by counting the number of bookings for each car.
+
+    :return: A tuple containing two lists: (labels, data)
+    """
+    try:
+        conn = sqlite3.connect(r"C:\Users\User\Downloads\Carmala\main\Carmala.db")
+        cursor = conn.cursor()
+
+        # SQL query to join Booking and CarList tables
+        query = """
+            SELECT CarList.CarName, COUNT(Booking.CarID) AS UsageCount
+            FROM Booking
+            INNER JOIN CarList ON Booking.CarID = CarList.CarID
+            GROUP BY CarList.CarName
+            ORDER BY UsageCount DESC
+        """
+        cursor.execute(query)
+        result = cursor.fetchall()
+        conn.close()
+
+        # Separate data into labels (Car Names) and values (Usage Count)
+        labels = [row[0] for row in result]
+        data = [row[1] for row in result]
+
+        return labels, data
+
+    except sqlite3.Error as e:
+        messagebox.showerror("Database Error", f"Error fetching car usage data: {e}")
+        return [], []
+
+
+        # Separate labels (car names) and data (number of bookings)
+        labels = [row[0] for row in results]
+        data = [row[1] for row in results]
+
+        return labels, data
+
+    except sqlite3.Error as e:
+        messagebox.showerror("Database Error", f"An error occurred while fetching car usage data: {e}")
+        return [], []
+
+
+def display_car_usage_pie_chart():
+    """
+    Fetches car usage data and displays it as a pie chart on the admin panel.
+    """
+    labels, data = get_car_usage_data()
+    if labels and data:
+        display_pie_chart(
+            data=data,
+            labels=labels,
+            title="Car Usage Distribution",
+            x=850,  # Position on the admin panel
+            y=470
+        )
+
+
 def display_car_availability():
-    admin_frame.pack_forget()  # Hide admin panel
-    car_availability_frame.pack(fill=tk.BOTH, expand=True)  # Show the car availability frame
+    admin_session = get_admin_session()
+    if not admin_session:
+        messagebox.showerror("Error", "You must be logged in as an admin to view cars.")
+        return
 
-    # Clear previous entries from Car Treeview
+    admin_id = admin_session["admin_id"]  # Retrieve AdminID from session
+    print(f"Admin ID from session: {admin_id}")  # Debugging print
+
+    car_availability_frame.pack(fill=tk.BOTH, expand=True)  # Show the car availability frame
+    admin_frame.pack_forget()  # Hide admin panel
+
+    # Clear previous entries
     for row in car_tree.get_children():
         car_tree.delete(row)
 
-    # Fetch data from the database
-    conn = sqlite3.connect(R"C:\Users\User\Downloads\Carmala\main\Carmala.db")  # Replace with your actual DB path
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM CarList")  # Adjust the query to match your table structure
-    rows = cursor.fetchall()
+    try:
+        conn = sqlite3.connect("Carmala.db")  # Replace with your actual DB path
+        cursor = conn.cursor()
 
-    # Insert data into the Car Treeview
-    for row in rows:
-        car_tree.insert("", tk.END, values=row)
+        # Query to fetch cars associated with the AdminID
+        cursor.execute("""
+            SELECT * FROM CarList WHERE AdminID = ?
+        """, (admin_id,))
+        rows = cursor.fetchall()
 
-    conn.close()
+        if rows:
+            for row in rows:
+                car_tree.insert("", tk.END, values=row)
+        else:
+            print(f"No cars found for AdminID {admin_id}.")  # Debugging
+
+        conn.close()
+
+    except sqlite3.Error as e:
+        messagebox.showerror("Database Error", f"An error occurred: {e}")
 
 
 def display_agencies_frame():
@@ -279,37 +642,37 @@ def open_add_car_form():
     submit_button.pack(pady=20)
 
 def logout():
-    root.destroy()  # Close the admin panel window
-    os.system('python "C:\\Users\\User\\Downloads\\Carmala\\main\\login.py"')  # Reopen the login screen
+    if os.path.exists(ADMIN_SESSION_FILE):
+        os.remove(ADMIN_SESSION_FILE)
+    messagebox.showinfo("Logged Out", "You have successfully logged out.")
+    root.destroy()  # Close the application
 
 
 def add_car(name, location, capacity, fueltype, transmission, features, price, image_url, window):
-    if not all([name, location, capacity, fueltype, transmission, features, price, image_url]):
-        messagebox.showerror("Error", "All fields must be filled out!")
+    admin_session = get_admin_session()
+    if not admin_session:
+        messagebox.showerror("Error", "You must be logged in as an admin to add cars.")
         return
 
+    admin_id = admin_session["admin_id"]  # Get the AdminID from the session
+
     try:
-        conn = sqlite3.connect(R"C:\Users\User\Downloads\Carmala\main\Carmala.db")
+        conn = sqlite3.connect("Carmala.db")
         cursor = conn.cursor()
 
-        # Insert new car details into CarList (adjust table/column names as necessary)
+        # Insert new car with AdminID
         cursor.execute("""
             INSERT INTO CarList (CarName, CarLocation, CarCapacity, CarFueltype, CarTransmission, CarFeatures, CarPrice, CarImage, AdminID)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-        name, location, capacity, fueltype, transmission, features, price, image_url, 1))  # Adjust `admin_id` if needed
+        """, (name, location, capacity, fueltype, transmission, features, price, image_url, admin_id))
 
         conn.commit()
-
-        # Insert new car into Treeview
-        car_tree.insert("", tk.END, values=(
-        cursor.lastrowid, name, location, capacity, fueltype, transmission, features, price, image_url, 1))
-
+        window.destroy()  # Close the add car window
         messagebox.showinfo("Success", "Car added successfully!")
-        window.destroy()  # Close the add car window after submission
 
-    except sqlite3.OperationalError as e:
-        messagebox.showerror("Database Error", str(e))
+    except sqlite3.Error as e:
+        messagebox.showerror("Database Error", f"An error occurred: {e}")
+
     finally:
         conn.close()
 
@@ -413,43 +776,78 @@ def edit_car(car_id, name, location, capacity, fueltype, transmission, features,
     messagebox.showinfo("Edit Car", "Car details updated successfully.")
 
 def display_booking_history():
-    admin_frame.pack_forget()  # Hide admin panel
-    booking_history_frame.pack(fill=tk.BOTH, expand=True)  # Show booking history frame
+    admin_session = get_admin_session()
+    if not admin_session:
+        messagebox.showerror("Error", "You must be logged in as an admin to view booking history.")
+        return
 
-    # Clear previous entries from Booking Treeview
+    admin_id = admin_session["admin_id"]  # Retrieve AdminID from session
+    booking_history_frame.pack(fill=tk.BOTH, expand=True)  # Show booking history frame
+    admin_frame.pack_forget()  # Hide admin panel
+
+    # Clear previous entries
     for row in booking_tree.get_children():
         booking_tree.delete(row)
 
-    # Fetch data from the database
-    conn = sqlite3.connect(R"C:\Users\User\Downloads\Carmala\main\Carmala.db")  # Replace with your actual DB path
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM BookingHistory")  # Fetch all records from the BookingHistory table
-    rows = cursor.fetchall()
+    try:
+        conn = sqlite3.connect("Carmala.db")  # Replace with your actual DB path
+        cursor = conn.cursor()
 
-    # Insert data into the Booking Treeview
-    for row in rows:
-        booking_tree.insert("", tk.END, values=row)
+        # Query to fetch booking history associated with the AdminID
+        cursor.execute("""
+            SELECT HistoryID, BookingID, PickupDate, DropoffDate
+            FROM BookingHistory
+            WHERE AdminID = ?
+        """, (admin_id,))
+        rows = cursor.fetchall()
 
-    conn.close()
+        # Insert data into the Booking Treeview
+        for row in rows:
+            booking_tree.insert("", tk.END, values=row)
+
+        conn.close()
+
+    except sqlite3.Error as e:
+        messagebox.showerror("Database Error", f"An error occurred: {e}")
+
+
 
 def display_pending_bookings():
-    admin_frame.pack_forget()  # Hide admin panel
-    pending_bookings_frame.pack(fill=tk.BOTH, expand=True)  # Show the pending bookings frame
+    admin_session = get_admin_session()
+    if not admin_session:
+        messagebox.showerror("Error", "You must be logged in as an admin to view bookings.")
+        return
 
-    # Clear previous entries from the Treeview
+    admin_id = admin_session["admin_id"]  # Retrieve AdminID from session
+    pending_bookings_frame.pack(fill=tk.BOTH, expand=True)  # Show the pending bookings frame
+    admin_frame.pack_forget()  # Hide admin panel
+
+    # Clear previous entries
     for row in pending_bookings_tree.get_children():
         pending_bookings_tree.delete(row)
 
-    conn = sqlite3.connect("Carmala.db")  # Use your actual DB path
-    cursor = conn.cursor()
-    cursor.execute("SELECT BookingID, UserID, CarID, PickupDate, DropoffDate, BookingStatus FROM Booking WHERE BookingStatus = 'Pending'")  # Adjust the query if needed
-    rows = cursor.fetchall()
+    try:
+        conn = sqlite3.connect("Carmala.db")  # Replace with your actual DB path
+        cursor = conn.cursor()
 
-    # Insert data into the Pending Bookings Treeview
-    for row in rows:
-        pending_bookings_tree.insert("", tk.END, values=row)
+        # Filter bookings where AdminID matches
+        cursor.execute("""
+            SELECT BookingID, UserID, CarID, PickupDate, DropoffDate, BookingStatus
+            FROM Booking
+            WHERE BookingStatus = 'Pending' AND AdminID = ?
+        """, (admin_id,))
+        rows = cursor.fetchall()
 
-    conn.close()
+        # Insert data into the Pending Bookings Treeview
+        for row in rows:
+            pending_bookings_tree.insert("", tk.END, values=row)
+
+        conn.close()
+
+    except sqlite3.Error as e:
+        messagebox.showerror("Database Error", f"An error occurred: {e}")
+
+
 # --- MAIN WINDOW SETUP --- #
 root = tk.Tk()
 root.title("Login Page")
@@ -466,7 +864,7 @@ login_frame.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
 # Right side image (during login)
 right_frame = tk.Frame(main_frame, bg='#F1F1F1', width=400)
 right_frame.pack(fill=tk.Y, side=tk.RIGHT)
-image_path = r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-11-15 220908.png"  # Add your path
+image_path = r"C:\Users\User\Downloads\WhatsApp Image 2024-09-24 at 23.17.29_16a30ce5.jpg"  # Add your path
 image = Image.open(image_path)
 image = ImageTk.PhotoImage(image)
 image_label = tk.Label(right_frame, image=image)
@@ -485,10 +883,32 @@ label_password.pack()
 entry_password = tk.Entry(login_frame, show="*")
 entry_password.pack(pady=5)
 
-button_login = tk.Button(login_frame, text="Log in", font="Poppins", command=login, bg="#1572D3")
-button_login.pack(pady=20)
-# Edit car button in the Car Availability frame (adjust size)
-# Edit car button in the Car Availability frame (adjust size and color)
+
+
+def send_email_notification(to_email, subject, message):
+    sender_email = "killerpill585@gmail.com"
+    sender_password = "oxey jnwo qybz etmg"
+
+    try:
+        # Set up the email message
+        msg = MIMEMultipart()
+        msg["From"] = sender_email
+        msg["To"] = to_email
+        msg["Subject"] = subject
+
+        # Add the message body
+        msg.attach(MIMEText(message, "plain"))
+
+        # Set up the SMTP server
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login(sender_email, sender_password)
+        server.send_message(msg)
+        server.quit()
+        print("Email sent successfully!")
+
+    except Exception as e:
+        print(f"Failed to send email: {e}")
 
 def approve_booking():
     selected_item = pending_bookings_tree.selection()  # Get the selected item
@@ -500,13 +920,55 @@ def approve_booking():
             conn = sqlite3.connect("Carmala.db")
             cursor = conn.cursor()
 
-            # Update the BookingStatus in the Booking table to 'Approved'
-            cursor.execute("UPDATE Booking SET BookingStatus = 'Approved' WHERE BookingID = ?", (booking_id,))
-            conn.commit()
+            # Fetch the user email, car name, pickup date, and dropoff date
+            cursor.execute("""
+                SELECT UA.Email, C.CarName, B.PickupDate, B.DropoffDate
+                FROM Booking B
+                JOIN UserAccount UA ON B.UserID = UA.UserID
+                JOIN CarList C ON B.CarID = C.CarID
+                WHERE B.BookingID = ?
+            """, (booking_id,))
+            result = cursor.fetchone()
 
-            # Refresh the pending bookings list
-            display_pending_bookings()
-            messagebox.showinfo("Success", "Booking status updated to 'Approved' successfully!")
+            if result:
+                user_email, car_name, pickup_date, dropoff_date = result
+
+                # Convert dates to readable format
+                pickup_date_formatted = pd.to_datetime(pickup_date).strftime("%d %B %Y (%A)")
+                dropoff_date_formatted = pd.to_datetime(dropoff_date).strftime("%d %B %Y (%A)")
+
+                # Update the BookingStatus in the Booking table to 'Approved'
+                cursor.execute("UPDATE Booking SET BookingStatus = 'Approved' WHERE BookingID = ?", (booking_id,))
+                conn.commit()
+
+                # Create the email content
+                subject = "Booking Approved"
+                message = f"""
+                Dear Valued Customer,
+
+                We are pleased to inform you that your booking has been approved!
+
+                **Booking Details:**
+                - Car: {car_name}
+                - Pickup Date: {pickup_date_formatted}
+                - Dropoff Date: {dropoff_date_formatted}
+                - Status: Approved
+
+                Please proceed to make payment. Thank you!
+
+                Best regards,
+                Carmala Team
+                """
+
+                # Send email notification
+                send_email_notification(user_email, subject, message)
+
+                # Refresh the pending bookings list
+                display_pending_bookings()
+                messagebox.showinfo("Success", "Booking status updated to 'Approved' successfully!")
+
+            else:
+                messagebox.showerror("Error", "User email or car details not found.")
 
         except sqlite3.Error as e:
             messagebox.showerror("Database Error", f"An error occurred: {e}")
@@ -516,39 +978,82 @@ def approve_booking():
     else:
         messagebox.showerror("Error", "Please select a booking to approve.")
 
+
+
 def reject_booking():
     selected_item = pending_bookings_tree.selection()  # Get selected item
     if selected_item:
         booking_id = pending_bookings_tree.item(selected_item)["values"][0]  # Get BookingID of selected row
 
-        # Connect to the database
-        conn = sqlite3.connect("Carmala.db")  # Use your actual DB path
-        cursor = conn.cursor()
+        try:
+            # Connect to the database
+            conn = sqlite3.connect("Carmala.db")
+            cursor = conn.cursor()
 
-        # Fetch the booking details from the Booking table
-        cursor.execute("SELECT * FROM Booking WHERE BookingID = ?", (booking_id,))
-        booking = cursor.fetchone()
-
-        if booking:
-            # Insert the booking details into BookingHistory
+            # Fetch the user email, car name, pickup date, and dropoff date
             cursor.execute("""
-                INSERT INTO BookingHistory (HistoryID, BookingID, PickupDate, DropoffDate)
-                VALUES (?, ?, ?, ?)
-            """, (None, booking[0], booking[3], booking[4]))  # Adjust indices as per your Booking table structure
+                SELECT UA.Email, C.CarName, B.PickupDate, B.DropoffDate
+                FROM Booking B
+                JOIN UserAccount UA ON B.UserID = UA.UserID
+                JOIN CarList C ON B.CarID = C.CarID
+                WHERE B.BookingID = ?
+            """, (booking_id,))
+            result = cursor.fetchone()
 
-            # Delete the booking from the Booking table
-            cursor.execute("DELETE FROM Booking WHERE BookingID = ?", (booking_id,))
-            conn.commit()  # Commit the changes
-            messagebox.showinfo("Success", "Booking rejected successfully!")
-        else:
-            messagebox.showerror("Error", "Booking not found.")
+            if result:
+                user_email, car_name, pickup_date, dropoff_date = result
 
-        conn.close()
+                # Convert dates to readable format
+                pickup_date_formatted = pd.to_datetime(pickup_date).strftime("%d %B %Y (%A)")
+                dropoff_date_formatted = pd.to_datetime(dropoff_date).strftime("%d %B %Y (%A)")
 
-        # Refresh the pending bookings list
-        display_pending_bookings()
-    else:
-        messagebox.showerror("Error", "Please select a booking to reject.")
+                # Insert the booking details into BookingHistory
+                cursor.execute("""
+                    INSERT INTO BookingHistory (HistoryID, BookingID, PickupDate, DropoffDate)
+                    SELECT NULL, BookingID, PickupDate, DropoffDate
+                    FROM Booking
+                    WHERE BookingID = ?
+                """, (booking_id,))
+
+                # Delete the booking from the Booking table
+                cursor.execute("DELETE FROM Booking WHERE BookingID = ?", (booking_id,))
+                conn.commit()
+
+                # Create the email content
+                subject = "Booking Rejected"
+                message = f"""
+                Dear Valued Customer,
+
+                We regret to inform you that your booking has been rejected.
+
+                **Booking Details:**
+                - Car: {car_name}
+                - Pickup Date: {pickup_date_formatted}
+                - Dropoff Date: {dropoff_date_formatted}
+                - Status: Rejected
+
+                If you have any questions or need assistance, please contact our support team.
+
+                Best regards,
+                Carmala Team
+                """
+
+                # Send email notification
+                send_email_notification(user_email, subject, message)
+
+                messagebox.showinfo("Success", "Booking rejected successfully!")
+
+            else:
+                messagebox.showerror("Error", "User email or car details not found.")
+
+        except sqlite3.Error as e:
+            messagebox.showerror("Database Error", f"An error occurred: {e}")
+
+        finally:
+            conn.close()
+
+
+
 
 # --- ADMIN PANEL --- #
 admin_frame = tk.Frame(main_frame, bg='#F1F1F1')
