@@ -6,6 +6,7 @@ from tkinter import messagebox
 import subprocess
 from datetime import datetime
 import sqlite3
+import customtkinter as ctk
 import Session
 
 logged_in_user = Session.get_user_session()
@@ -314,72 +315,119 @@ def open_rating_window():
                               font=("Poppins", 10, "bold"))
     submit_button.pack(pady=10)
 
+
+chat_window = None
 # Function to handle chat button click
 def open_chatbox():
     # Chat window
-    chat_window = tk.Toplevel()
+    global chat_window
+    chat_window = ctk.CTkToplevel()
     chat_window.title("Chatbot")
+    chat_window.geometry("600x600")
+
+    # Set focus to the chat window
+    chat_window.focus_force()
+
+    # Disable main window interaction
+    chat_window.grab_set()
 
     BG_GRAY = "#F1F1F1"
-    BG_COLOR = "#F1F1F1"
     TEXT_COLOR = "black"
-    FONT = "Poppins 14"
-    FONT_BOLD = "Helvetica 13 bold"
+    FONT = ("Poppins", 14)
+    FONT_BOLD = ("Helvetica", 13, "bold")
 
     # Send function for chat responses
     def send():
         user_input = e.get()
-        txt.insert(tk.END, "\nYou -> " + user_input)
+        txt.configure(state="normal")
+        txt.insert("end", "\nYou -> " + user_input)
+        txt.configure(state="disabled")
 
         user_message = user_input.lower()
 
         if user_message == "hello":
-            txt.insert(tk.END, "\nBot -> Hello! Welcome to GoCar. How can I assist you today?")
+            txt.configure(state="normal")
+            txt.insert("end", "\nBot -> Hello! Welcome to GoCar. How can I assist you today?")
+            txt.configure(state="disabled")
         elif user_message in ["hi", "hii", "hiiii"]:
-            txt.insert(tk.END, "\nBot -> Hi there! What can I help you with?")
+            txt.configure(state="normal")
+            txt.insert("end", "\nBot -> Hi there! What can I help you with?")
+            txt.configure(state="disabled")
         elif user_message == "emergency":
-            txt.insert(tk.END,
-                       "\nBot -> If this is an emergency, please contact our roadside assistance at 60 3245 5533.")
+            txt.configure(state="normal")
+            txt.insert(
+                "end",
+                "\nBot -> If this is an emergency, please contact our roadside assistance at 60 3245 5533."
+            )
+            txt.configure(state="disabled")
         elif user_message in ["how do i rent a car", "how to rent", "how can i rent a car"]:
-            txt.insert(tk.END,
-                       "\nBot -> To rent a car, you can browse available vehicles on our app, select your preferred car, and follow the steps to book it.")
+            txt.configure(state="normal")
+            txt.insert(
+                "end",
+                "\nBot -> To rent a car, you can browse available vehicles on our app, select your preferred car, and follow the steps to book it."
+            )
+            txt.configure(state="disabled")
         elif user_message in ["i need help with my booking", "booking help", "booking issue"]:
-            txt.insert(tk.END,
-                       "\nBot -> I'd be happy to help with your booking. Could you please provide your booking ID or more details?")
+            txt.configure(state="normal")
+            txt.insert(
+                "end",
+                "\nBot -> I'd be happy to help with your booking. Could you please provide your booking ID or more details?"
+            )
+            txt.configure(state="disabled")
         elif user_message in ["what do you offer", "what cars do you have", "what kinds of cars are available"]:
-            txt.insert(tk.END,
-                       "\nBot -> We offer a wide range of cars, from compact cars to SUVs and luxury vehicles. You can check availability in your area on our app.")
+            txt.configure(state="normal")
+            txt.insert(
+                "end",
+                "\nBot -> We offer a wide range of cars, from compact cars to SUVs and luxury vehicles. You can check availability in your area on our app."
+            )
+            txt.configure(state="disabled")
         elif user_message in ["thanks", "thank you", "that's helpful"]:
-            txt.insert(tk.END, "\nBot -> You're welcome! Let me know if there's anything else I can assist you with.")
+            txt.configure(state="normal")
+            txt.insert("end", "\nBot -> You're welcome! Let me know if there's anything else I can assist you with.")
+            txt.configure(state="disabled")
         elif user_message in ["i need to cancel my booking", "cancel my booking", "how to cancel"]:
-            txt.insert(tk.END,
-                       "\nBot -> To cancel a booking, go to 'My Bookings' in the app and select 'Cancel'. If you need further help, let me know.")
+            txt.configure(state="normal")
+            txt.insert(
+                "end",
+                "\nBot -> To cancel a booking, go to 'My Bookings' in the app and select 'Cancel'. If you need further help, let me know."
+            )
+            txt.configure(state="disabled")
         elif user_message in ["tell me a joke", "make me laugh", "say something funny"]:
-            txt.insert(tk.END,
-                       "\nBot -> Why don’t cars play hide and seek? Because good luck hiding something that big!")
+            txt.configure(state="normal")
+            txt.insert(
+                "end",
+                "\nBot -> Why don’t cars play hide and seek? Because good luck hiding something that big!"
+            )
+            txt.configure(state="disabled")
         elif user_message in ["goodbye", "bye", "see you later"]:
-            txt.insert(tk.END, "\nBot -> Thank you for choosing GoCar! Have a safe journey, and see you next time.")
+            txt.configure(state="normal")
+            txt.insert("end", "\nBot -> Thank you for choosing GoCar! Have a safe journey, and see you next time.")
+            txt.configure(state="disabled")
         else:
-            txt.insert(tk.END,
-                       "\nBot -> I'm here to help with any questions about booking, car availability, or your account. Could you please provide more details?")
+            txt.configure(state="normal")
+            txt.insert(
+                "end",
+                "\nBot -> I'm here to help with any questions about booking, car availability, or your account. Could you please provide more details?"
+            )
+            txt.configure(state="disabled")
 
-        e.delete(0, tk.END)
+        e.delete(0, "end")
 
     # Chat interface setup
-    label1 = tk.Label(chat_window, bg='#F1F1F1', fg="#1572D3", text="Chat with Us", font=FONT_BOLD, pady=10, width=20, height=1)
-    label1.grid(row=0)
+    label1 = ctk.CTkLabel(chat_window, text="Chat with Us", font=FONT_BOLD, pady=10)
+    label1.pack(pady=10)
 
-    txt = tk.Text(chat_window, bg=BG_COLOR, fg=TEXT_COLOR, font=FONT, width=60)
-    txt.grid(row=1, column=0, columnspan=2)
+    txt = ctk.CTkTextbox(chat_window, width=580, height=400, font=FONT)
+    txt.pack(pady=10)
+    txt.configure(state="disabled")
 
-    scrollbar = tk.Scrollbar(txt)
-    scrollbar.place(relheight=1, relx=0.974)
+    e = ctk.CTkEntry(chat_window, width=460, font=FONT)
+    e.pack(side="left", padx=10, pady=10)
 
-    e = tk.Entry(chat_window, bg="#F1F1F1", fg=TEXT_COLOR, font=FONT, width=55)
-    e.grid(row=2, column=0)
+    send_button = ctk.CTkButton(chat_window, text="Send", font=FONT_BOLD, command=send)
+    send_button.pack(side="right", padx=10, pady=10)
+    
 
-    send_button = tk.Button(chat_window, text="Send", font=FONT_BOLD, bg=BG_GRAY,fg = "#1572D3", command=send)
-    send_button.grid(row=2, column=1)
 
 # Function to change button color on hover
 def on_hover(button, color):
