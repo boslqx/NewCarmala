@@ -436,7 +436,7 @@ entry_confirm_password = tk.Entry(registration_frame, show="", font=("Poppins", 
 entry_confirm_password.place(x=63, y=435)
 
 # Add placeholder text for the confirm password
-add_placeholder_password(entry_confirm_password, "Enter your username")
+add_placeholder_password(entry_confirm_password, "Confirm your password")
 
 # Confirm Password matching note
 label_confirm_password_note = tk.Label(registration_frame, text="Password should be the same as above", fg="grey",
