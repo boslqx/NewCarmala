@@ -291,9 +291,9 @@ def open_rating_window():
         # Inner join BookingHistory and CarList to get CarName for the logged-in user
         cursor.execute("""
             SELECT CarList.CarName 
-            FROM BookingHistory 
-            INNER JOIN CarList ON BookingHistory.CarID = CarList.CarID
-            WHERE BookingHistory.UserID = ?
+            FROM Booking
+            INNER JOIN CarList ON Booking.CarID = CarList.CarID
+            WHERE Booking.UserID = ? AND Booking.BookingStatus = 'Approved'
         """, (logged_in_user.get("user_id"),))
         car_names = [row[0] for row in cursor.fetchall()]
 
