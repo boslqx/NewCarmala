@@ -229,21 +229,27 @@ def submit_rating():
     else:
         ctk.CTkMessagebox(title="No Rating", message="Please select a rating before submitting.")
 
+
 def open_rating_window():
     global rating_window, rating_var, comment_entry, stars, car_combobox
-
-    # Retrieve user session
-    logged_in_user = Session.get_user_session()
-    if logged_in_user:
-        user_id = logged_in_user.get("user_id")
-        print(f"Logged in user ID: {user_id}")
-    else:
-        print("No user is logged in.")
 
     # Create the rating window
     rating_window = ctk.CTkToplevel()
     rating_window.title("Rate Your Experience")
     rating_window.geometry("500x400")
+
+    # Ensure focus stays on the rating window
+    rating_window.focus_force()
+
+    # Disable interaction with the main window
+    rating_window.grab_set()
+
+    # Add a handler to release grab and avoid issues when closing the window
+    def on_close():
+        rating_window.grab_release()
+        rating_window.destroy()
+
+    rating_window.protocol("WM_DELETE_WINDOW", on_close)
 
     # Label for the rating window
     rating_label = ctk.CTkLabel(rating_window, text="Please rate your experience:", font=("Arial", 14))
@@ -280,7 +286,7 @@ def open_rating_window():
             FROM Booking
             INNER JOIN CarList ON Booking.CarID = CarList.CarID
             WHERE Booking.UserID = ? AND Booking.BookingStatus = 'Approved'
-        """, (logged_in_user.get("user_id"),))
+        """, (Session.get_user_session().get("user_id"),))
         car_names = [row[0] for row in cursor.fetchall()]
         conn.close()
 
@@ -297,7 +303,8 @@ def open_rating_window():
 
     # Submit button
     submit_button = ctk.CTkButton(
-        rating_window, text="Submit", command=submit_rating, fg_color="#1572D3", hover_color="#0E4C92", font=("Poppins", 10, "bold")
+        rating_window, text="Submit", command=submit_rating, fg_color="#1572D3", hover_color="#0E4C92",
+        font=("Poppins", 10, "bold")
     )
     submit_button.pack(pady=10)
 
