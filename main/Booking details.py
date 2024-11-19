@@ -1,7 +1,8 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
+from PIL import Image, ImageTk
 import sqlite3
-import subprocess
+import os
 import Session
 
 # Get the logged-in user's information
@@ -15,34 +16,127 @@ else:
     user_id = None  # Set user_id to None if no user is logged in
 
 
-def fetch_booking_details(logged_in_user_id):
-    # Connect to the database
+# Function to fetch booking details
+def fetch_booking_details(logged_in_user_id, order_by="BookingDate DESC", status_filter=None):
     conn = sqlite3.connect('Carmala.db')
     cursor = conn.cursor()
 
-    # Query to fetch BookingID, PickupDate, DropoffDate from Booking table and CarName from CarList table,
-    # filtered by the logged-in user's UserID
     query = '''
-        SELECT Booking.BookingID, Booking.PickupDate, Booking.DropoffDate, CarList.CarName, Booking.BookingStatus
+        SELECT Booking.BookingID, Booking.PickupDate, Booking.DropoffDate, Booking.BookingDate,
+               CarList.CarName, Booking.BookingStatus
         FROM Booking
         JOIN CarList ON Booking.CarID = CarList.CarID
         WHERE Booking.UserID = ?
     '''
-    cursor.execute(query, (logged_in_user_id,))
-    bookings = cursor.fetchall()
+    if status_filter:
+        query += " AND Booking.BookingStatus = ?"
+        cursor.execute(query + f" ORDER BY {order_by}", (logged_in_user_id, status_filter))
+    else:
+        cursor.execute(query + f" ORDER BY {order_by}", (logged_in_user_id,))
 
+    bookings = cursor.fetchall()
     conn.close()
     return bookings
 
 
+# Function to fetch car details
+def fetch_car_details(car_id):
+    conn = sqlite3.connect('Carmala.db')
+    cursor = conn.cursor()
+    query = "SELECT * FROM CarList WHERE CarID = ?"
+    cursor.execute(query, (car_id,))
+    car_details = cursor.fetchone()
+    conn.close()
+    return car_details
+
+
+def show_car_details(booking_id):
+    conn = sqlite3.connect('Carmala.db')
+    cursor = conn.cursor()
+
+    # Fetch car details from the database
+    query = '''
+        SELECT CarList.CarName, CarList.CarCapacity, CarList.CarFuelType, 
+               CarList.CarTransmission, CarList.CarColour, CarList.CarType, CarList.CarImage
+        FROM Booking
+        JOIN CarList ON Booking.CarID = CarList.CarID
+        WHERE Booking.BookingID = ?
+    '''
+    cursor.execute(query, (booking_id,))
+    car_details = cursor.fetchone()
+    conn.close()
+
+    # Debugging: Log the fetched data
+    print(f"Car details fetched for Booking ID {booking_id}: {car_details}")
+
+    if car_details:
+        try:
+            # Unpack the car details
+            car_name, car_capacity, car_fuel_type, car_transmission, car_colour, car_type, car_image = car_details
+
+            # Create the details window
+            car_window = tk.Toplevel(booking_window)
+            car_window.title("Car Details")
+            car_window.geometry("500x700")
+            car_window.config(bg="#FFFFFF")
+
+            # Card-style layout
+            card_frame = tk.Frame(car_window, bg="#F9F9F9", bd=2, relief="solid", padx=20, pady=20)
+            card_frame.pack(pady=20, padx=20, fill=tk.BOTH, expand=True)
+
+            # Display car image
+            if car_image and os.path.exists(car_image):
+                from PIL import Image, ImageTk
+                image = Image.open(car_image)
+                image = image.resize((300, 200))  # No need for Image.ANTIALIAS
+                photo = ImageTk.PhotoImage(image)
+                image_label = tk.Label(card_frame, image=photo, bg="#F9F9F9")
+                image_label.image = photo  # Keep reference
+                image_label.pack(pady=10)
+            else:
+                tk.Label(card_frame, text="Image not available", font=("Poppins", 12), bg="#F9F9F9").pack(pady=10)
+
+            # Add car details
+            tk.Label(card_frame, text=f"Car Name: {car_name}", font=("Poppins", 14, "bold"), bg="#F9F9F9").pack(pady=5)
+            tk.Label(card_frame, text=f"Capacity: {car_capacity} persons", font=("Poppins", 12), bg="#F9F9F9").pack(pady=5)
+            tk.Label(card_frame, text=f"Fuel Type: {car_fuel_type}", font=("Poppins", 12), bg="#F9F9F9").pack(pady=5)
+            tk.Label(card_frame, text=f"Transmission: {car_transmission}", font=("Poppins", 12), bg="#F9F9F9").pack(pady=5)
+            tk.Label(card_frame, text=f"Colour: {car_colour}", font=("Poppins", 12), bg="#F9F9F9").pack(pady=5)
+            tk.Label(card_frame, text=f"Type: {car_type}", font=("Poppins", 12), bg="#F9F9F9").pack(pady=5)
+
+            # Close button
+            close_button = tk.Button(car_window, text="Close", font=("Poppins", 12, "bold"),
+                                     bg="#1572D3", fg="white", command=car_window.destroy)
+            close_button.pack(pady=20)
+
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred while displaying car details: {e}")
+            print(f"Error: {e}")
+
+    else:
+        messagebox.showwarning("No Data", "No car details found for this booking.")
+
+
+
+
+
+# Function to filter booking details
+def apply_filter():
+    order_by = filter_date_var.get()
+    status_filter = filter_status_var.get()
+    status_filter = None if status_filter == "All" else status_filter
+    bookings = fetch_booking_details(user_id, order_by, status_filter)
+
+    # Clear the treeview and repopulate
+    for item in treeview.get_children():
+        treeview.delete(item)
+    for booking in bookings:
+        treeview.insert('', 'end', values=booking)
+
+
+# Proceed to Payment
 def proceed_to_payment():
     print("Proceeding to Payment...")
-
-
-def go_to_home():
-    process = subprocess.Popen(["python", "Home.py"])
-    print("Home opened with process ID:", process.pid)
-    booking_window.after(400, booking_window.destroy)
 
 
 def cancel_booking():
@@ -102,62 +196,94 @@ def cancel_booking():
     submit_button.pack(pady=20)
 
 
+# Back to Home
+def go_to_home():
+    booking_window.destroy()
+
+
+# Main Function
 def open_booking_details_window():
-    global booking_window, treeview
-    # Create the main window
+    global booking_window, treeview, filter_date_var, filter_status_var
     booking_window = tk.Tk()
     booking_window.title("Booking Details")
-    booking_window.geometry("900x700")
+    booking_window.geometry("1000x700")
     booking_window.config(bg="#F1F1F1")
 
-    # Create a frame for the treeview
     frame = tk.Frame(booking_window, bg="#F1F1F1")
     frame.pack(padx=20, pady=20, fill=tk.BOTH, expand=True)
 
-    # Create a treeview to display the booking details
-    columns = ('BookingID', 'PickupDate', 'DropoffDate', 'CarName', 'BookingStatus')
+    columns = ('BookingID', 'PickupDate', 'DropoffDate', 'BookingDate', 'CarName', 'BookingStatus')
     treeview = ttk.Treeview(frame, columns=columns, show='headings', height=10)
     treeview.pack(fill=tk.BOTH, expand=True)
 
-    # Define column headings
     treeview.heading('BookingID', text='Booking ID')
     treeview.heading('PickupDate', text='Pickup Date')
     treeview.heading('DropoffDate', text='Dropoff Date')
+    treeview.heading('BookingDate', text='Booking Date')
     treeview.heading('CarName', text='Car Name')
     treeview.heading('BookingStatus', text='Booking Status')
 
-    # Define column widths
     treeview.column('BookingID', width=100)
     treeview.column('PickupDate', width=150)
     treeview.column('DropoffDate', width=150)
+    treeview.column('BookingDate', width=150)
     treeview.column('CarName', width=200)
     treeview.column('BookingStatus', width=200)
 
-    # Fetch booking details from the database for the logged-in user and insert into the treeview
-    if user_id:
-        bookings = fetch_booking_details(user_id)
-        for booking in bookings:
-            treeview.insert('', 'end', values=booking)
+    # Add a note below the treeview
+    note_label = tk.Label(frame, text="*Double-click on a booking to view car details*",
+                          font=("Poppins", 10, "italic"), fg="gray", bg="#F1F1F1")
+    note_label.pack(pady=5)
 
-    # "Proceed to Payment" button
-    proceed_button = tk.Button(booking_window, text="Proceed to Payment", font=("Poppins", 12, 'bold'),
-                               bg="#1572D3", fg="white", command=proceed_to_payment)
+    bookings = fetch_booking_details(user_id)
+    for booking in bookings:
+        treeview.insert('', 'end', values=booking)
+
+    def on_treeview_select(event):
+        selected_item = treeview.selection()
+        if selected_item:
+            booking_id = treeview.item(selected_item[0])['values'][0]
+            show_car_details(booking_id)
+
+    treeview.bind("<Double-1>", on_treeview_select)
+
+    # Filter options
+    filter_frame = tk.Frame(booking_window, bg="#F1F1F1")
+    filter_frame.pack(pady=10)
+
+    tk.Label(filter_frame, text="Sort by Date:", font=("Poppins", 12), bg="#F1F1F1").pack(side=tk.LEFT, padx=5)
+    filter_date_var = tk.StringVar(value="Newest")
+    date_menu = ttk.Combobox(filter_frame, textvariable=filter_date_var, values=["Newest", "Oldest"],
+                             state="readonly")
+    date_menu.pack(side=tk.LEFT, padx=5)
+
+    tk.Label(filter_frame, text="Filter by Status:", font=("Poppins", 12), bg="#F1F1F1").pack(side=tk.LEFT, padx=5)
+    filter_status_var = tk.StringVar(value="All")
+    status_menu = ttk.Combobox(filter_frame, textvariable=filter_status_var,
+                               values=["All", "Approved", "Pending", "Rejected"], state="readonly")
+    status_menu.pack(side=tk.LEFT, padx=5)
+
+    apply_button = tk.Button(filter_frame, text="Apply Filter", command=apply_filter, bg="#1572D3", fg="white",
+                             font=("Poppins", 12, 'bold'))
+    apply_button.pack(side=tk.LEFT, padx=10)
+
+    # Buttons
+    proceed_button = tk.Button(booking_window, text="Proceed to Payment", font=("Poppins", 12, 'bold'), bg="#1572D3",
+                               fg="white", command=proceed_to_payment)
     proceed_button.pack(pady=10)
 
-    # "Cancel Booking" button
-    cancel_button = tk.Button(booking_window, text="Cancel Booking", font=("Poppins", 12, 'bold'),
-                              bg="#D9534F", fg="white", command=cancel_booking)
+    cancel_button = tk.Button(booking_window, text="Cancel Booking", font=("Poppins", 12, 'bold'), bg="#D9534F",
+                              fg="white", command=cancel_booking)
     cancel_button.pack(pady=10)
 
-    # "Back to Home" button
-    back_button = tk.Button(booking_window, text="Back to Home", font=("Poppins", 12, 'bold'),
-                            bg="#1572D3", fg="white", command=go_to_home)
+    back_button = tk.Button(booking_window, text="Back to Home", font=("Poppins", 12, 'bold'), bg="#1572D3", fg="white",
+                            command=go_to_home)
     back_button.pack(pady=10)
 
     booking_window.mainloop()
 
 
-# Run the window if a user is logged in
+# Run if user is logged in
 if user_id:
     open_booking_details_window()
 else:

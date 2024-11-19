@@ -4,8 +4,63 @@ from tkinter import messagebox
 import sqlite3
 import Session
 import os
-import subprocess
-import time
+import random
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from tkinter import simpledialog
+
+# Initialize the verification code globally
+verification_code = None
+
+
+# Function to generate a random 4-digit code
+def generate_verification_code():
+    return str(random.randint(1000, 9999))
+
+
+# Send verification email function
+def send_verification_email(email, code):
+    try:
+        # Set up the SMTP server details
+        smtp_server = "smtp.gmail.com"
+        smtp_port = 587
+        sender_email = "killerpill585@gmail.com"
+        sender_password = "oxey jnwo qybz etmg"
+
+        # Compose the email
+        message = MIMEMultipart("alternative")
+        message["Subject"] = "Your Verification Code"
+        message["From"] = sender_email
+        message["To"] = email
+        text = f"Your verification code is: {code}"
+        part = MIMEText(text, "plain")
+        message.attach(part)
+
+        # Connect to the SMTP server and send the email
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()  # Secure the connection
+        server.login(sender_email, sender_password)
+        server.sendmail(sender_email, email, message.as_string())
+        server.quit()
+        return True
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+        return False
+
+
+# Function to verify the code entered by the user
+def verify_code():
+    global verification_code
+    entered_code = entry_verification_code.get().strip()
+
+    if entered_code == verification_code:
+        messagebox.showinfo("Success", "Verification successful!")
+        # After successful verification, transition to the login screen
+        verification_frame.pack_forget()
+        login_frame.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
+    else:
+        messagebox.showerror("Error", "Incorrect verification code. Please try again.")
 
 # Connect to database and create table if not exists
 def create_db():
@@ -41,6 +96,7 @@ def open_login_window():
 
 # Register user and insert into database
 def register_user():
+    global verification_code
     # Fetch user inputs
     reg_email = entry_reg_email.get().strip()  # Remove spaces
     reg_username = entry_reg_username.get().strip()  # Remove spaces
@@ -64,11 +120,17 @@ def register_user():
             conn.commit()
             conn.close()
 
-            messagebox.showinfo("Success", "User registered successfully!")
+            # Generate verification code and send email
+            verification_code = generate_verification_code()
+            if send_verification_email(reg_email, verification_code):
+                messagebox.showinfo("Success",
+                                    "User registered successfully! Check your email for the verification code.")
 
-            # After registering, return to the login frame
-            registration_frame.pack_forget()
-            login_frame.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
+                # Switch to the verification frame
+                registration_frame.pack_forget()
+                verification_frame.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
+            else:
+                messagebox.showerror("Error", "Failed to send verification email. Please try again.")
 
         except sqlite3.IntegrityError:
             messagebox.showerror("Error", "Username already exists!")
@@ -137,8 +199,90 @@ def open_registration_frame():
     # Show the registration frame
     registration_frame.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
 
+
 def forgot_password():
-    messagebox.showinfo("Forgot Password", "Redirecting to password recovery...")
+    global verification_code
+
+    # Step 1: Prompt for the user's email address
+    email = simpledialog.askstring("Forgot Password", "Enter your registered email:")
+
+    if email:
+        # Check if email exists in the database
+        conn = sqlite3.connect('Carmala.db')
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM UserAccount WHERE Email = ?", (email,))
+        user = cursor.fetchone()
+        conn.close()
+
+        if user:
+            # Step 2: Generate and send the verification code
+            verification_code = generate_verification_code()
+            if send_verification_email(email, verification_code):
+                # Step 3: Prompt the user to enter the verification code
+                entered_code = simpledialog.askstring("Verification", "Enter the 4-digit verification code sent to your email:")
+
+                if entered_code == verification_code:
+                    # Step 4: Create a new window for password reset
+                    reset_window = tk.Toplevel()
+                    reset_window.title("Reset Password")
+
+                    # Function to handle password update
+                    def update_password():
+                        new_password = new_password_entry.get()
+                        confirm_password = confirm_password_entry.get()
+
+                        if len(new_password) < 8 or not new_password.isalnum():
+                            messagebox.showerror("Error", "Password must be at least 8 characters and contain no special characters!")
+                        elif new_password != confirm_password:
+                            messagebox.showerror("Error", "Passwords do not match!")
+                        else:
+                            # Update the password in the database
+                            conn = sqlite3.connect('Carmala.db')
+                            cursor = conn.cursor()
+                            cursor.execute("UPDATE UserAccount SET Password = ? WHERE Email = ?", (new_password, email))
+                            conn.commit()
+                            conn.close()
+                            messagebox.showinfo("Success", "Password updated successfully!")
+                            reset_window.destroy()
+                            open_login_window()  # Redirect to login window
+
+                    # Add password entries with placeholders
+                    def add_placeholder_password(entry, placeholder_text):
+                        entry.insert(0, placeholder_text)
+                        entry.configure(fg='grey', show='')
+                        entry.bind("<FocusIn>", lambda e: clear_placeholder_password(e, placeholder_text))
+                        entry.bind("<FocusOut>", lambda e: restore_placeholder_password(e, placeholder_text))
+
+                    def clear_placeholder_password(event, placeholder_text):
+                        entry = event.widget
+                        if entry.get() == placeholder_text:
+                            entry.delete(0, tk.END)
+                            entry.configure(fg='black', show='*')
+
+                    def restore_placeholder_password(event, placeholder_text):
+                        entry = event.widget
+                        if entry.get() == "":
+                            entry.insert(0, placeholder_text)
+                            entry.configure(fg='grey', show='')
+
+                    # Create and pack new password entry
+                    new_password_entry = tk.Entry(reset_window)
+                    add_placeholder_password(new_password_entry, "Enter new password")
+                    new_password_entry.pack(pady=5)
+
+                    # Create and pack confirm password entry
+                    confirm_password_entry = tk.Entry(reset_window)
+                    add_placeholder_password(confirm_password_entry, "Confirm new password")
+                    confirm_password_entry.pack(pady=5)
+
+                    # Submit button
+                    submit_button = tk.Button(reset_window, text="Submit", command=update_password)
+                    submit_button.pack(pady=10)
+                else:
+                    messagebox.showerror("Error", "Incorrect verification code. Please try again.")
+        else:
+            # Email not registered
+            messagebox.showerror("Error", "This email is not registered for the application.")
 
 
 def add_placeholder(entry, placeholder_text):
@@ -170,6 +314,12 @@ def restore_placeholder(event, placeholder_text):
         event.widget.insert(0, placeholder_text)
         event.widget.configure(fg='grey')
 
+# Function to change button color on hover
+def on_hover(button, color):
+    button['bg'] = color
+
+def on_leave(button, color):
+    button['bg'] = color
 
 # Create the main window
 root = tk.Tk()
@@ -224,6 +374,8 @@ add_placeholder_password(entry_password, "Enter your password")
 
 # Login button in the login frame
 button_login = tk.Button(login_frame, text="Log in",  fg="white",font=("Poppins",12,"bold"), command=login, bg="#1572D3")
+button_login.bind("<Enter>", lambda event: on_hover(button_login, "#1058A7"))
+button_login.bind("<Leave>", lambda event: on_leave(button_login, "#1572D3"))
 button_login.place(x=180, y=340)
 
 # Forgot password and register labels in the login frame
@@ -250,7 +402,7 @@ entry_reg_email = tk.Entry(registration_frame, font=("Poppins", 14), width=25)
 entry_reg_email.place(x=63, y=175)
 
 # Add placeholder text for the email
-add_placeholder(entry_reg_email, "Enter your username")
+add_placeholder(entry_reg_email, "Enter your email")
 
 
 # Registration Username field
@@ -293,6 +445,8 @@ label_confirm_password_note.place(x=61, y=460)
 
 # Register button
 button_register = tk.Button(registration_frame, text="Register",  fg="white",font=("Poppins",12,"bold"),command=register_user, bg="#1572D3")
+button_register.bind("<Enter>", lambda event: on_hover(button_register, "#1058A7"))
+button_register.bind("<Leave>", lambda event: on_leave(button_register, "#1572D3"))
 button_register.place(x=170, y=500)
 
 # Back to login button
@@ -300,8 +454,24 @@ button_back_to_login = tk.Button(registration_frame, text="Back to Login",  fg="
                                  command=lambda: [registration_frame.pack_forget(),
                                                   login_frame.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)],
                                  bg="#1572D3")
+button_back_to_login.bind("<Enter>", lambda event: on_hover(button_back_to_login, "#1058A7"))
+button_back_to_login.bind("<Leave>", lambda event: on_leave(button_back_to_login, "#1572D3"))
 button_back_to_login.place(x=150, y=550)
 
+
+# Define the verification frame in the Tkinter UI setup
+verification_frame = tk.Frame(main_frame, bg='#F1F1F1')
+
+# Add verification code entry field
+label_verification = tk.Label(verification_frame, text="Enter Verification Code:", font=("Poppins", 14), bg='#F1F1F1')
+label_verification.pack(pady=20)
+
+entry_verification_code = tk.Entry(verification_frame, font=("Poppins", 14), width=10)
+entry_verification_code.pack(pady=10)
+
+# Button to verify code
+button_verify_code = tk.Button(verification_frame, text="Verify", font=("Poppins", 12, "bold"), fg="white", bg="#1572D3", command=verify_code)
+button_verify_code.pack(pady=20)
 
 # Start the main event loop
 root.mainloop()

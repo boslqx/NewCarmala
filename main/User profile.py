@@ -4,8 +4,8 @@ from PIL import ImageTk, Image
 import sqlite3
 import subprocess
 import Session
-import os
 import io
+
 
 # Retrieve the logged-in user
 user_data = Session.get_user_session()
@@ -34,25 +34,46 @@ def save_to_database():
     country = country_entry.get().strip()
     identification_number = id_entry.get().strip()
 
+    # Debugging: Print the values being retrieved from entry widgets
+    print(f"Saving data for User ID {user_id}:")
+    print(f"Username: {username}")
+    print(f"Email: {email}")
+    print(f"Gender: {gender}")
+    print(f"Country: {country}")
+    print(f"ID Number: {identification_number}")
+
+    # Only convert image to BLOB if a new file was uploaded
     profile_picture = convert_image_to_blob(profile_picture_path) if profile_picture_path else None
     driving_license = convert_image_to_blob(driving_license_path) if driving_license_path else None
 
-    # Open the connection to the database
-    conn = sqlite3.connect('Carmala.db')
-    cursor = conn.cursor()
+    try:
+        with sqlite3.connect('Carmala.db') as conn:
+            cursor = conn.cursor()
 
-    # Update the user's data, including profile picture and driving license
-    cursor.execute('''
-        UPDATE UserAccount
-        SET Username = ?, Email = ?, Gender = ?, Country = ?, IdentificationNumber = ?, ProfilePicture = ?, DrivingLicense = ?
-        WHERE UserID = ?
-    ''', (username, email, gender, country, identification_number, profile_picture, driving_license, user_id))
+            # Get the current images in the database to avoid overwriting if no new image is uploaded
+            cursor.execute("SELECT ProfilePicture, DrivingLicense FROM UserAccount WHERE UserID = ?", (user_id,))
+            current_images = cursor.fetchone()
+            current_profile_picture = current_images[0] if current_images[0] else None
+            current_driving_license = current_images[1] if current_images[1] else None
 
-    conn.commit()
-    conn.close()
+            # If no new image is uploaded, keep the old images in the database
+            profile_picture = profile_picture if profile_picture else current_profile_picture
+            driving_license = driving_license if driving_license else current_driving_license
 
-    messagebox.showinfo("Success", "User profile updated successfully!")
-    toggle_edit(False)  # Disable editing after saving
+            # Update user's data
+            cursor.execute('''UPDATE UserAccount
+                              SET Username = ?, Email = ?, Gender = ?, Country = ?, IdentificationNumber = ?, ProfilePicture = ?, DrivingLicense = ?
+                              WHERE UserID = ?''',
+                           (username, email, gender, country, identification_number, profile_picture, driving_license, user_id))
+
+            conn.commit()  # Commit the transaction after both updates
+            messagebox.showinfo("Success", "User profile updated successfully!")
+            toggle_edit(False)  # Disable editing after saving
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        messagebox.showerror("Error", f"Error saving data: {e}")
+
+
 
 # Function to load user data into fields
 def load_user_data():
@@ -160,35 +181,15 @@ def log_out():
 
 # Function to open the selected button
 def open_home():
-    process = subprocess.Popen(["python", "Home.py"])
-    print("Home opened with process ID:", process.pid)
+    root.destroy()
 
-    # Delay the close of the current window
-    root.after(400, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
 
-# Function to open the script when the "How it Works" button is clicked
-def open_howitworks():
-    process = subprocess.Popen(["python", "How it Works.py"])
-    print("How it Works opened with process ID:", process.pid)
+# Function to change button color on hover
+def on_hover(button, color):
+    button['bg'] = color
 
-    # Delay the close of the current window
-    root.after(400, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
-
-# Function to open the script when the "Become a Renter" button is clicked
-def open_becomearenter():
-    process = subprocess.Popen(["python", "Become a renter.py"])
-    print("Become a renter opened with process ID:", process.pid)
-
-    # Delay the close of the current window
-    root.after(400, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
-# Function to open the selected button
-def open_bookingdetails():
-    process = subprocess.Popen(["python", "Booking details.py"])
-    print("Booking details opened with process ID:", process.pid)
-
-    # Delay the close of the current window
-    root.after(400, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
-
+def on_leave(button, color):
+    button['bg'] = color
 
 # GUI setup
 root = tk.Tk()
@@ -199,27 +200,16 @@ root.geometry("1100x700")
 canvas = tk.Canvas(root, width=1000, height=700)
 canvas.pack(fill='both', expand=True)
 
-# Load logo and add it to the canvas
-logo_path = r"C:\Users\User\OneDrive\Pictures\Saved Pictures\cleaned_image.png"
-logo_img = Image.open(logo_path)
-logo_img = logo_img.resize((150, 100), Image.LANCZOS)
-logo_photo = ImageTk.PhotoImage(logo_img)
-logo_button = tk.Label(root, image=logo_photo, cursor="hand2", bg="#F1F1F1")
-canvas.create_window(10, 2, anchor="nw", window=logo_button)
-logo_button.bind("<Button-1>", lambda e: open_home())
-
 # Header buttons
-become_renter_button = tk.Button(root, bg="#1572D3", text="Become a Renter", fg="white", font=("Poppins", 12, "bold"), command=open_becomearenter)
-canvas.create_window(200, 40, anchor="nw", window=become_renter_button)
+home_button = tk.Button(root, bg="#1572D3",width=15, text="Back to Home", fg="white", font=("Poppins", 12, "bold"), command=open_home)
+home_button.bind("<Enter>", lambda event: on_hover(home_button, "#1058A7"))
+home_button.bind("<Leave>", lambda event: on_leave(home_button, "#1572D3"))
+canvas.create_window(50, 40, anchor="nw", window=home_button)
 
-how_it_works_button = tk.Button(root, bg="#1572D3", text="How It Works", fg="white", font=("Poppins", 12, "bold"), command=open_howitworks)
-canvas.create_window(370, 40, anchor="nw", window=how_it_works_button)
-
-bookingdetails_button = tk.Button(root, bg="#1572D3", text="Booking Details", fg="white", font=("Poppins", 12, "bold"), command=open_bookingdetails)
-canvas.create_window(510, 40, anchor="nw", window=bookingdetails_button)
-
-log_out_button = tk.Button(root, bg="#1572D3", text="Log Out", fg="white", font=("Poppins", 12, "bold"), command=log_out)
-canvas.create_window(960, 40, anchor="nw", window=log_out_button)
+log_out_button = tk.Button(root, bg="#1572D3",width=12, text="Log Out", fg="white", font=("Poppins", 12, "bold"), command=log_out)
+log_out_button.bind("<Enter>", lambda event: on_hover(log_out_button, "#1058A7"))
+log_out_button.bind("<Leave>", lambda event: on_leave(log_out_button, "#1572D3"))
+canvas.create_window(940, 40, anchor="nw", window=log_out_button)
 
 # User information fields
 username_entry = ttk.Entry(root, width=40)
@@ -229,36 +219,33 @@ country_entry = ttk.Entry(root, width=40)
 id_entry = ttk.Entry(root, width=40)
 
 # Profile picture and driving license image labels
-profile_picture_label = tk.Label(root, bg="white", width=100, height=100)
+profile_picture_label = tk.Label(root, bg="white", width=130, height=130)
 driving_license_label = tk.Label(root, bg="white", width=150, height=100)
 
 # Add blue rectangle (header) decoration
-canvas.create_rectangle(0, 120, 1500, 260, fill="#1572D3", outline="")
+canvas.create_rectangle(0, 0, 1500, 260, fill="#1572D3", outline="")
 
 # Layout
 canvas.create_window(200, 300, window=ttk.Label(root, text="Username", font=("Poppins", 10)))
 canvas.create_window(315, 330, window=username_entry,width=300, height=40)
 canvas.create_window(700, 300, window=ttk.Label(root, text="Email", font=("Poppins", 10)))
 canvas.create_window(830, 330, window=email_entry,width=300, height=40)
-canvas.create_window(195, 400, window=ttk.Label(root, text="Gender", font=("Poppins", 10)))
-canvas.create_window(325, 430, window=gender_combobox,width=300, height=40)
+canvas.create_window(190, 400, window=ttk.Label(root, text="Gender", font=("Poppins", 10)))
+canvas.create_window(317, 430, window=gender_combobox,width=300, height=40)
 canvas.create_window(700, 400, window=ttk.Label(root, text="Country", font=("Poppins", 10)))
 canvas.create_window(825, 430, window=country_entry,width=300, height=40)
 canvas.create_window(710, 500, window=ttk.Label(root, text="ID Number", font=("Poppins", 10)))
 canvas.create_window(830, 530, window=id_entry,width=300, height=40)
 
 # Display profile picture and driving license images
-canvas.create_window(220, 190, window=profile_picture_label)
+canvas.create_window(220, 180, window=profile_picture_label)
 canvas.create_window(240, 550, window=driving_license_label)
 
 # Buttons for uploading files
 upload_profile_btn = ttk.Button(root, text="Upload Profile Picture", command=upload_profile_picture)
-canvas.create_window(340, 195, window=upload_profile_btn)
+canvas.create_window(360, 195, window=upload_profile_btn)
 upload_license_btn = ttk.Button(root, text="Upload Driving License", command=upload_driving_license)
 canvas.create_window(390, 550, window=upload_license_btn)
-
-
-
 
 # Edit and Save buttons
 edit_btn = tk.Button(root, width=10, height=2,text="Edit", bg="#1572D3", fg="white", font=("Arial", 12, "bold"),command=lambda: toggle_edit(True))

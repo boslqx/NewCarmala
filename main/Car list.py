@@ -6,9 +6,11 @@ from tkinter import messagebox
 import sqlite3
 from datetime import datetime
 import os
-import subprocess
 import sys
 import Session
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 # Retrieve the logged-in user
 user_data = Session.get_user_session()
@@ -23,16 +25,19 @@ else:
 current_page = 0
 cars_per_page = 8  # Maximum number of car cards per page
 
+# Function to change button color on hover
+def on_hover(button, color):
+    button['bg'] = color
+
+def on_leave(button, color):
+    button['bg'] = color
+
 
 # Function to open the selected button
 def open_home():
-    process = subprocess.Popen(["python", "Home.py"])
-    print("Become a renter opened with process ID:", process.pid)
+    root.destroy()
 
-    # Delay the close of the current window
-    root.after(400, root.destroy)  # Waits 300 milliseconds (1 second) before destroying
-
-def get_available_cars(location, pickup_date, dropoff_date):
+def get_available_cars(location, pickup_date, return_date):
     try:
         conn = sqlite3.connect('Carmala.db')
         cursor = conn.cursor()
@@ -40,8 +45,8 @@ def get_available_cars(location, pickup_date, dropoff_date):
         # Convert to date only if pickup_date and dropoff_date are strings
         if isinstance(pickup_date, str):
             pickup_date = datetime.strptime(pickup_date, "%Y-%m-%d").date()
-        if isinstance(dropoff_date, str):
-            dropoff_date = datetime.strptime(dropoff_date, "%Y-%m-%d").date()
+        if isinstance(return_date, str):
+            dropoff_date = datetime.strptime(return_date, "%Y-%m-%d").date()
 
         # Fetch cars from CARTABLE that are available in the given location and date range
         cursor.execute('''
@@ -49,10 +54,10 @@ def get_available_cars(location, pickup_date, dropoff_date):
                    c.CarTransmission, c.CarFeatures, c.CarPrice, c.CarImage
             FROM CarList AS c
             LEFT JOIN Booking AS b ON c.CarID = b.CarID
-            WHERE c.CarLocation = ?
+            WHERE LOWER(c.CarLocation) = LOWER(?)
               AND (b.PickupDate IS NULL OR b.DropoffDate IS NULL 
                    OR b.DropoffDate < ? OR b.PickupDate > ?)
-        ''', (location, pickup_date, dropoff_date))
+        ''', (location, pickup_date, return_date))
 
         available_cars = cursor.fetchall()
         conn.close()
@@ -66,8 +71,9 @@ def search_action():
     location = location_entry.get().strip()  # Trim any leading/trailing spaces
     pickup_date = pickup_date_entry.get_date().strftime('%Y-%m-%d')
     return_date = return_date_entry.get_date().strftime('%Y-%m-%d')
+    print(f"Pickup Date: {pickup_date}, Dropoff Date: {return_date}")
 
-    # Simple validation to ensure the fields are not empty
+
     # Simple validation to ensure the fields are not empty
     if not location or not pickup_date or not return_date:
         messagebox.showwarning("Input Error", "Please fill all the fields.")
@@ -129,6 +135,8 @@ def create_car_card(parent, row, col, car_data):
 
     # Rent Now Button
     add_booklist_button = tk.Button(parent, text="Add to Book List", font=("Poppins", 10, 'bold'), bg="#1572D3", fg="white", cursor="hand2",command=lambda: add_to_booking_list(car_data))
+    add_booklist_button.bind("<Enter>", lambda event: on_hover(add_booklist_button, "#1058A7"))
+    add_booklist_button.bind("<Leave>", lambda event: on_leave(add_booklist_button, "#1572D3"))
     add_booklist_button.grid(row=row+4, column=col, pady=10)
 
 # Function to fetch car data from the database
@@ -351,7 +359,19 @@ def open_booking_list(user_id, pickup_date, dropoff_date):
         remove_button.grid(row=0, column=3, padx=10)
 
     # Confirm booking for selected cars
+    from datetime import datetime
+
     def confirm_booking():
+        # Ensure we are getting the dates directly from the DateEntry widgets
+        pickup_date = pickup_date_entry.get_date().strftime('%Y-%m-%d')  # Get the pickup date from the DateEntry
+        return_date = return_date_entry.get_date().strftime('%Y-%m-%d')  # Get the return date from the DateEntry
+
+        # Now print to verify that the dates are correctly retrieved
+        print(f"Pickup Date: {pickup_date}, Dropoff Date: {return_date}")
+
+        # Get the current date (today's date) in the format 'YYYY-MM-DD'
+        current_date = datetime.now().strftime('%Y-%m-%d')
+
         # Collect selected car IDs
         selected_car_ids = [car_id for car_id, var in selected_cars.items() if var.get()]
 
@@ -359,23 +379,116 @@ def open_booking_list(user_id, pickup_date, dropoff_date):
             messagebox.showinfo("No Car Selected", "Please select at least one car to book.")
             return
 
+        if not pickup_date or not return_date:
+            print("Warning: Pickup date or dropoff date is missing!")
+            messagebox.showerror("Error", "Pickup and Dropoff dates must be selected.")
+            return
+
         # Insert bookings into the Booking table
         conn = sqlite3.connect('Carmala.db')
+        conn.set_trace_callback(print)  # Log SQL queries
         cursor = conn.cursor()
 
-        for car_id in selected_car_ids:
-            # Insert each booking, set status to 'Pending'
-            cursor.execute("""
-                INSERT INTO Booking (UserID, CarID, PickupDate, DropoffDate, BookingStatus)
-                VALUES (?, ?, ?, ?, ?)
-            """, (user_id, car_id, pickup_date, dropoff_date, 'Pending'))
+        try:
+            # Get the user's email
+            cursor.execute("SELECT Email FROM UserAccount WHERE UserID = ?", (user_id,))
+            user_email = cursor.fetchone()[0]
+            print(f"User Email: {user_email}")
 
-        # Commit and close the database connection
-        conn.commit()
-        conn.close()
+            booking_details = []
+            for car_id in selected_car_ids:
+                # Insert each booking, set status to 'Pending' and set the current date as BookingDate
+                print(f"Inserting booking for CarID: {car_id} with dates {pickup_date} to {return_date}")
+                cursor.execute("""
+                    INSERT INTO Booking (UserID, CarID, PickupDate, DropoffDate, BookingStatus, BookingDate)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (user_id, car_id, pickup_date, return_date, 'Pending', current_date))
 
-        messagebox.showinfo("Booking Confirmed", "Your booking(s) have been submitted for approval.")
-        booking_window.destroy()  # Close the booking window after confirmation
+                # Verify insertion
+                booking_id = cursor.lastrowid
+                print(f"Inserted Booking ID: {booking_id}")
+
+                # Get the BookingID and car details for the email
+                cursor.execute(
+                    "SELECT CarName, CarLocation, CarCapacity, CarFueltype, CarTransmission, CarFeatures, CarPrice FROM CarList WHERE CarID = ?",
+                    (car_id,))
+                car_details = cursor.fetchone()
+                if not car_details:
+                    print(f"No car details found for CarID: {car_id}")
+                    continue
+
+                car_name, location, capacity, fuel_type, transmission, features, price = car_details
+
+                booking_details.append(f"""
+        BookingID: {booking_id}
+        Booking Date: {pickup_date} to {return_date}
+        Car Name: {car_name}
+        Location: {location}
+        Capacity: {capacity} seats
+        Fuel Type: {fuel_type}
+        Transmission: {transmission}
+        Features: {features}
+        Price: RM{price}/day
+        """)
+
+            # Commit and log the transaction
+            print("Committing transaction...")
+            conn.commit()
+            print("Transaction committed.")
+
+            # Email content
+            email_subject = "Booking Confirmation - Carmala"
+            email_body = f"""
+        Dear Customer,
+
+        Thank you for trusting Carmala! Your booking(s) have been submitted for approval. Below are the details of your booking(s):
+
+        {''.join(booking_details)}
+
+        Once your booking is approved, an email will be sent to you with payment instructions to secure your booking.
+
+        Best regards,
+        The Carmala Team
+        """
+
+            # Send the email
+            try:
+                sender_email = "killerpill585@gmail.com"
+                sender_password = "oxey jnwo qybz etmg"  # Replace with your email's password or app password
+
+                # Set up the email
+                msg = MIMEMultipart()
+                msg['From'] = sender_email
+                msg['To'] = user_email
+                msg['Subject'] = email_subject
+                msg.attach(MIMEText(email_body, 'plain'))
+
+                # Connect to the SMTP server and send the email
+                with smtplib.SMTP('smtp.gmail.com', 587) as server:
+                    server.starttls()
+                    server.login(sender_email, sender_password)
+                    server.send_message(msg)
+
+                print("Email sent successfully.")
+            except Exception as e:
+                print(f"Failed to send email: {e}")
+                messagebox.showerror("Email Error",
+                                     "Your booking was submitted, but the confirmation email could not be sent.")
+
+            # Show success message
+            messagebox.showinfo("Booking Confirmed",
+                                "Your booking(s) have been submitted for approval. Check your inbox for booking confirmation.")
+
+        except sqlite3.Error as e:
+            print(f"SQLite error: {e}")
+            messagebox.showerror("Database Error", f"Failed to save booking: {e}")
+        finally:
+            conn.close()
+            print("Database connection closed.")
+
+        # Close the booking window after confirmation
+        booking_window.destroy()
+        print("Booking window destroyed.")
 
     # Add the Confirm Booking button
     confirm_button = tk.Button(booking_window, text="Confirm Booking", bg='#1572D3', fg='white', font=("Poppins", 12,"bold"), command=confirm_booking)
@@ -399,7 +512,11 @@ canvas.create_window(50, 120, anchor="nw", window=car_frame)
 
 # Pagination controls
 prev_button = tk.Button(root, text="Previous", command=previous_page)
+prev_button.bind("<Enter>", lambda event: on_hover(prev_button, "#1058A7"))
+prev_button.bind("<Leave>", lambda event: on_leave(prev_button, "#1572D3"))
 next_button = tk.Button(root, text="Next", command=next_page)
+next_button.bind("<Enter>", lambda event: on_hover(next_button, "#1058A7"))
+next_button.bind("<Leave>", lambda event: on_leave(next_button, "#1572D3"))
 page_label = tk.Label(root, text="Page 1 of 1", font=("Poppins", 12))
 
 canvas.create_window(820, 610, anchor="nw", window=prev_button)
@@ -465,6 +582,8 @@ if return_date:
 # Button to open booking list window with parameters passed
 open_booking_button = tk.Button(root, text="Open Booking List", font=("Poppins", 12, 'bold'),
                                 bg="#1572D3", fg="white", command=lambda: open_booking_list(user_id, pickup_date, return_date))
+open_booking_button.bind("<Enter>", lambda event: on_hover(open_booking_button, "#1058A7"))
+open_booking_button.bind("<Leave>", lambda event: on_leave(open_booking_button, "#1572D3"))
 canvas.create_window(850, 447, anchor="nw", window=open_booking_button)
 
 
@@ -509,10 +628,14 @@ car_type_dropdown = create_dropdown("Car Type", ["Sedan", "Hatchback", "SUV", "M
 
 # Create the filter button
 filter_button = tk.Button(root, text="Filter", command=filter_car_data, bg="#1572D3", fg="white", font=("Poppins", 10, 'bold'))
+filter_button.bind("<Enter>", lambda event: on_hover(filter_button, "#1058A7"))
+filter_button.bind("<Leave>", lambda event: on_leave(filter_button, "#1572D3"))
 canvas.create_window(898, 325, anchor="nw", window=filter_button)
 
 # Create the Back to home button
 back_to_home_button = tk.Button(root, text="Back to home", bg="#1572D3", font=("Poppins",12,"bold"), fg="white", command=open_home)
+back_to_home_button.bind("<Enter>", lambda event: on_hover(back_to_home_button, "#1058A7"))
+back_to_home_button.bind("<Leave>", lambda event: on_leave(back_to_home_button, "#1572D3"))
 canvas.create_window(872, 494, anchor="nw", window=back_to_home_button)
 
 # Fetch and display all car data initially
