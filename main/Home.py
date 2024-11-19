@@ -38,7 +38,7 @@ def get_available_cars(location, pickup_date, return_date):
             SELECT * FROM CarList
             WHERE LOWER(CarLocation) = LOWER(?)
             AND CarID NOT IN (
-                SELECT CarID FROM BookingHistory
+                SELECT CarID FROM Booking
                 WHERE (PickupDate <= ? AND DropoffDate >= ?)
             )
         """
