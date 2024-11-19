@@ -3,6 +3,7 @@ from tkinter import ttk, messagebox
 from PIL import Image, ImageTk
 import sqlite3
 import os
+from datetime import datetime
 import Session
 
 # Get the logged-in user's information
@@ -23,9 +24,10 @@ def fetch_booking_details(logged_in_user_id, order_by="BookingDate DESC", status
 
     query = '''
         SELECT Booking.BookingID, Booking.PickupDate, Booking.DropoffDate, Booking.BookingDate,
-               CarList.CarName, Booking.BookingStatus
+               CarList.CarName, CarList.CarPrice, Booking.BookingStatus, AdminAccount.AdminID
         FROM Booking
         JOIN CarList ON Booking.CarID = CarList.CarID
+        JOIN AdminAccount ON CarList.AdminID = AdminAccount.AdminID
         WHERE Booking.UserID = ?
     '''
     if status_filter:
@@ -37,6 +39,7 @@ def fetch_booking_details(logged_in_user_id, order_by="BookingDate DESC", status
     bookings = cursor.fetchall()
     conn.close()
     return bookings
+
 
 
 # Function to fetch car details
@@ -116,10 +119,6 @@ def show_car_details(booking_id):
     else:
         messagebox.showwarning("No Data", "No car details found for this booking.")
 
-
-
-
-
 # Function to filter booking details
 def apply_filter():
     order_by = filter_date_var.get()
@@ -133,10 +132,6 @@ def apply_filter():
     for booking in bookings:
         treeview.insert('', 'end', values=booking)
 
-
-# Proceed to Payment
-def proceed_to_payment():
-    print("Proceeding to Payment...")
 
 
 def cancel_booking():
@@ -199,6 +194,27 @@ def cancel_booking():
 # Back to Home
 def go_to_home():
     booking_window.destroy()
+
+# Proceed to payment
+def proceed_to_payment(treeview):
+    selected_items = treeview.selection()
+    if not selected_items:
+        messagebox.showerror("Error", "Please select at least one booking to proceed to payment.")
+        return
+
+    selected_bookings = [treeview.item(item)["values"] for item in selected_items]
+
+    # Debugging: Check the structure of selected_bookings
+    print("Selected bookings:", selected_bookings)
+
+    # Check for missing or invalid data in the selected bookings
+    for booking in selected_bookings:
+        if len(booking) < 6 or not isinstance(booking[5], (int, float, str)):
+            messagebox.showerror("Error", f"Invalid data for booking: {booking}")
+            return
+
+    booking_window.withdraw()
+    open_payment_page(selected_bookings)
 
 
 # Main Function
@@ -269,7 +285,7 @@ def open_booking_details_window():
 
     # Buttons
     proceed_button = tk.Button(booking_window, text="Proceed to Payment", font=("Poppins", 12, 'bold'), bg="#1572D3",
-                               fg="white", command=proceed_to_payment)
+                               fg="white", command=lambda: proceed_to_payment(treeview))
     proceed_button.pack(pady=10)
 
     cancel_button = tk.Button(booking_window, text="Cancel Booking", font=("Poppins", 12, 'bold'), bg="#D9534F",
@@ -281,6 +297,266 @@ def open_booking_details_window():
     back_button.pack(pady=10)
 
     booking_window.mainloop()
+
+def open_payment_page(selected_bookings):
+    global payment_window
+    payment_window = tk.Toplevel(booking_window)
+    payment_window.title("Checkout")
+    payment_window.geometry("1280x780")
+
+    # Debugging: Inspect selected_bookings
+    print("Selected bookings in payment page:", selected_bookings)
+
+    # Background image setup
+    image_path = r"C:\Users\User\OneDrive\Pictures\Group 3.png"
+    bg_image = Image.open(image_path)
+    bg_image = bg_image.resize((1280, 780), Image.LANCZOS)
+    bg_photo = ImageTk.PhotoImage(bg_image)
+
+    bg_label = tk.Label(payment_window, image=bg_photo)
+    bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+    bg_label.image = bg_photo
+
+    def go_back():
+        payment_window.destroy()
+        booking_window.deiconify()
+
+    button_back = tk.Button(payment_window, text="Back", font=("Arial", 10), bg="#0a47a3", command=go_back)
+    button_back.place(x=900, y=125, width=90, height=40)
+
+    # Calculate total price and handle errors
+    try:
+        total_price = sum([float(booking[5]) for booking in selected_bookings])
+    except ValueError as e:
+        print("Error in total price calculation:", e)
+        messagebox.showerror("Error", "Invalid price data. Cannot calculate total price.")
+        return
+
+    # Debugging: Log total price
+    print("Total price:", total_price)
+
+    # Booking Details Frame
+    details_frame = tk.Frame(payment_window, bg="#FFFFFF", bd=2, relief=tk.GROOVE)
+    details_frame.place(x=280, y=280, width=420, height=280)
+
+    # Generate booking details string
+    booking_info = ""
+    for booking in selected_bookings:
+        try:
+            car_name = booking[4]
+            car_price = booking[5]
+            pickup_date = booking[1]
+            dropoff_date = booking[2]
+
+            # Format dates
+            pickup_date_formatted = datetime.strptime(pickup_date, "%Y-%m-%d").strftime("%d-%m-%Y")
+            dropoff_date_formatted = datetime.strptime(dropoff_date, "%Y-%m-%d").strftime("%d-%m-%Y")
+
+            # Calculate number of days booked
+            days_booked = (datetime.strptime(dropoff_date, "%Y-%m-%d") - datetime.strptime(pickup_date, "%Y-%m-%d")).days
+
+            booking_info += (
+                f"Car: {car_name}, Price: RM{car_price}\n"
+                f"From: {pickup_date_formatted}, To: {dropoff_date_formatted}\n"
+                f"Days Booked: {days_booked} days\n\n"
+            )
+        except Exception as e:
+            print(f"Error processing booking details for {booking}: {e}")
+
+    # Display booking details
+    booking_details_label = tk.Label(details_frame, text=booking_info, font=("Arial", 12), bg="#FFFFFF",
+                                     justify="left", anchor="w")
+    booking_details_label.pack(padx=10, pady=10)
+
+    # Display total price
+    price_label = tk.Label(payment_window, text=f"Total Price: RM{total_price}", font=("Arial", 14, "bold"), bg="#F1F1F1")
+    price_label.place(x=770, y=500)
+
+    # Payment Option Buttons
+    button_e_wallet = tk.Button(payment_window, text="E-Wallet", font=("Arial", 14), bg="#0a47a3", fg="white",
+                                command=lambda: process_payment("E-Wallet"))
+    button_e_wallet.place(x=280, y=600, width=230, height=70)
+
+    button_online_banking = tk.Button(payment_window, text="Online Banking", font=("Arial", 14), bg="#0a47a3",
+                                      fg="white", command=lambda: process_payment("Online Banking"))
+    button_online_banking.place(x=525, y=600, width=230, height=70)
+
+    button_card = tk.Button(payment_window, text="Credit/Debit Card", font=("Arial", 14), bg="#0a47a3", fg="white",
+                            command=lambda: process_payment("Credit/Debit Card"))
+    button_card.place(x=770, y=600, width=230, height=70)
+
+    def process_payment(payment_type, card_window=None):
+        if not selected_bookings:
+            messagebox.showerror("Error", "No bookings selected for payment.")
+            return
+
+        # Debugging: Inspect selected_bookings structure
+        print("Selected bookings:", selected_bookings)
+
+        # Validate data structure
+        for booking in selected_bookings:
+            if len(booking) < 8:  # Expecting at least 8 fields
+                print(f"Invalid booking data: {booking}")
+                messagebox.showerror("Error", "Incomplete booking data. Please check your bookings.")
+                return
+
+        if payment_type == "Credit/Debit Card":
+            # Create a small pop-up window for credit card details
+            card_window = tk.Toplevel(payment_window)
+            card_window.title("Enter Card Details")
+            card_window.geometry("400x250")
+            card_window.resizable(False, False)
+            card_window.transient(payment_window)  # Keep the pop-up on top of the payment page
+            card_window.grab_set()  # Make the pop-up modal (blocks interaction with the main window)
+
+            # Center the pop-up window on the screen
+            x = payment_window.winfo_x() + (payment_window.winfo_width() // 2) - 200
+            y = payment_window.winfo_y() + (payment_window.winfo_height() // 2) - 125
+            card_window.geometry(f"+{x}+{y}")
+
+            # Card Number
+            card_number_label = tk.Label(card_window, text="Card Number:", font=("Arial", 12))
+            card_number_label.pack(pady=5)
+            card_number_entry = tk.Entry(card_window, font=("Arial", 12), width=30)
+            card_number_entry.pack(pady=5)
+
+            # Expiry Date
+            expiry_date_label = tk.Label(card_window, text="Expiry Date (MM/YY):", font=("Arial", 12))
+            expiry_date_label.pack(pady=5)
+            expiry_date_entry = tk.Entry(card_window, font=("Arial", 12), width=15)
+            expiry_date_entry.pack(pady=5)
+
+            # CVV
+            cvv_label = tk.Label(card_window, text="CVV:", font=("Arial", 12))
+            cvv_label.pack(pady=5)
+            cvv_entry = tk.Entry(card_window, font=("Arial", 12), width=10, show="*")
+            cvv_entry.pack(pady=5)
+
+            # Submit Button
+            submit_button = tk.Button(card_window, text="Submit", font=("Arial", 14), bg="#0a47a3", fg="white",
+                                      command=lambda: finalize_payment("Credit/Debit Card", card_window))
+            submit_button.pack(pady=10)
+
+            return  # Exit the current function to wait for user input on the card window
+
+
+        elif payment_type == "E-Wallet":
+            # Show E-Wallet popup and wait for confirmation
+            ewallet_window = tk.Toplevel(payment_window)
+            ewallet_window.title("E-Wallet Payment")
+            ewallet_window.geometry("400x300")
+
+            tk.Label(ewallet_window, text="Select E-Wallet", font=("Arial", 14)).pack(pady=10)
+
+            ewallet_options = ["Touch 'n Go", "Grab Pay", "Boost"]
+            selected_ewallet = tk.StringVar(value=ewallet_options[0])
+
+            ewallet_menu = ttk.Combobox(ewallet_window, textvariable=selected_ewallet, values=ewallet_options,
+                                        font=("Arial", 12))
+            ewallet_menu.pack(pady=20)
+
+            def confirm_ewallet_payment():
+                ewallet_choice = selected_ewallet.get()
+                messagebox.showinfo("Payment", f"Proceeding with {ewallet_choice} payment.")
+                ewallet_window.destroy()
+                finalize_payment(payment_type)
+
+            tk.Button(ewallet_window, text="Confirm Payment", font=("Arial", 12), bg="#0a47a3", fg="white",
+                      command=confirm_ewallet_payment).pack(pady=20)
+            return
+
+        elif payment_type == "Online Banking":
+            # Show Online Banking popup and wait for confirmation
+            online_banking_window = tk.Toplevel(payment_window)
+            online_banking_window.title("Online Banking")
+            online_banking_window.geometry("400x350")
+
+            tk.Label(online_banking_window, text="Select Your Bank", font=("Arial", 14)).pack(pady=10)
+
+            bank_options = ["Maybank", "CIMB", "Public Bank", "RHB", "Hong Leong Bank"]
+            selected_bank = tk.StringVar(value=bank_options[0])
+
+            bank_menu = ttk.Combobox(online_banking_window, textvariable=selected_bank, values=bank_options,
+                                     font=("Arial", 12))
+            bank_menu.pack(pady=20)
+
+            tk.Label(online_banking_window, text="Bank Username:", font=("Arial", 12)).pack(pady=5)
+            bank_username_entry = tk.Entry(online_banking_window, font=("Arial", 12))
+            bank_username_entry.pack(pady=5)
+
+            tk.Label(online_banking_window, text="Bank Password:", font=("Arial", 12)).pack(pady=5)
+            bank_password_entry = tk.Entry(online_banking_window, font=("Arial", 12), show="*")
+            bank_password_entry.pack(pady=5)
+
+            def confirm_online_banking_payment():
+                bank_choice = selected_bank.get()
+                username = bank_username_entry.get()
+                password = bank_password_entry.get()
+
+                if not username or not password:
+                    messagebox.showerror("Input Error", "Please enter your bank login details.")
+                    return
+
+                messagebox.showinfo("Payment", f"Logging into {bank_choice} for payment.")
+                online_banking_window.destroy()
+                finalize_payment(payment_type)
+
+            tk.Button(online_banking_window, text="Confirm Payment", font=("Arial", 12), bg="#0a47a3", fg="white",
+                      command=confirm_online_banking_payment).pack(pady=20)
+            return
+
+        finalize_payment(payment_type, card_window)
+
+    def finalize_payment(payment_type, card_window=None):
+        try:
+            total_price = sum([float(booking[5]) for booking in selected_bookings])
+            confirm = messagebox.askyesno("Confirm Payment",
+                                          f"Do you want to pay RM{total_price} using {payment_type}?")
+            if not confirm:
+                return
+
+            # Process payment and update the database
+            conn = sqlite3.connect('../Carmala.db')
+            cursor = conn.cursor()
+            payment_successful = True
+
+            for booking in selected_bookings:
+                try:
+                    booking_id = booking[0]
+                    car_id = booking[6]
+                    car_price = booking[5]
+                    admin_id = booking[7]
+
+                    payment_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    cursor.execute('''
+                        INSERT INTO PaymentTable (PaymentType, BookingID, CarID, Amount, UserID, Date, AdminID)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ''', (payment_type, booking_id, car_id, car_price, user_id, payment_date, admin_id))
+
+                    cursor.execute('''
+                        UPDATE Booking
+                        SET BookingStatus = 'Paid'
+                        WHERE BookingID = ?
+                    ''', (booking_id,))
+
+                except Exception as e:
+                    print("Error processing booking:", e)
+                    messagebox.showerror("Error", f"Unexpected error: {e}")
+                    payment_successful = False
+
+            if payment_successful:
+                conn.commit()
+                messagebox.showinfo("Success", "Payment completed successfully! A receipt and payment confirmation email will be sent to your inbox.")
+                if card_window:
+                    card_window.destroy()
+            else:
+                messagebox.showerror("Payment Error", "Payment failed. No changes were committed.")
+
+            conn.close()
+
+        except Exception as e:
+            print("Error during payment process:", e)
+            messagebox.showerror("Error", f"An error occurred: {e}")
 
 
 # Run if user is logged in
