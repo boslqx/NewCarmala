@@ -15,59 +15,65 @@ import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import pandas as pd
-from AdminSession import get_admin_session, set_admin_session
+import Session
 
 
-# Global variable to store the session file path
-SESSION_FILE = "AdminSession.json"
-
-def open_admin_page():
-    logged_in_admin = get_admin_session()
-    if logged_in_admin:
-        print(f"Welcome, {logged_in_admin['username']} (Admin ID: {logged_in_admin['admin_id']})")
-        # Proceed to the admin page
-        admin_panel_setup()
+ADMIN_SESSION_FILE = "AdminSession.json"
+# Function to retrieve admin session and show admin details
+def get_logged_in_admin():
+    admin_session = Session.get_admin_session()
+    if admin_session:
+        admin_id = admin_session["admin_id"]
+        admin_username = admin_session["username"]
+        print(f"Admin ID: {admin_id}, Username: {admin_username}")  # Debugging print
+        return admin_id, admin_username
     else:
-        messagebox.showerror("Access Denied", "Please log in to access the admin panel.")
+        print("No admin is logged in.")
+        return None, None  # If no session exists
 
+# Function to get the admin session
+def get_admin_session():
+    """Retrieve the admin session data from the JSON file."""
+    if os.path.exists(ADMIN_SESSION_FILE):
+        try:
+            with open(ADMIN_SESSION_FILE, "r") as file:
+                session_data = json.load(file)
+                print("[DEBUG] Admin session loaded:", session_data)
+                return session_data
+        except json.JSONDecodeError:
+            print("[ERROR] Session file is corrupted.")
+    print("[DEBUG] No session file found.")
+    return None
+# Function to clear the admin session
+def clear_admin_session():
+    """Delete the admin session file."""
+    if os.path.exists(ADMIN_SESSION_FILE):
+        os.remove(ADMIN_SESSION_FILE)
+        print("[DEBUG] Admin session cleared.")
 
+def open_admin_page(admin_data):
+    global CURRENT_ADMIN
+    CURRENT_ADMIN = admin_data  # Store admin data globally
+    print(f"Admin page opened for: {CURRENT_ADMIN['username']} (Admin ID: {CURRENT_ADMIN['admin_id']})")
+    # Proceed to display the admin panel
+    open_admin_panel()
 
-# Example function to display admin information
+logged_in_admin = get_admin_session()
+
+if logged_in_admin:
+    admin_id = logged_in_admin.get("admin_id")
+    print(f"[DEBUG] Logged in Admin ID: {admin_id}")
+else:
+    messagebox.showerror("Access Denied", "No admin session found. Please log in again.")
+    os.system("python Login.py")  # Redirect to login page
+    exit()
+
 def show_admin_info():
-    logged_in_admin = get_admin_session()
-
     if logged_in_admin:
         print(f"Logged in as: {logged_in_admin['username']}, Admin ID: {logged_in_admin['admin_id']}")
     else:
         print("No admin is currently logged in.")
 
-
-
-
-ADMIN_SESSION_FILE = r"C:\Users\User\admin_session.json"
-
-def set_admin_session(admin_data):
-    try:
-        print("Writing session data:", admin_data)  # Debugging print
-        with open(ADMIN_SESSION_FILE, "w") as file:
-            json.dump(admin_data, file)
-        print(f"Session data written to {ADMIN_SESSION_FILE}.")
-    except Exception as e:
-        print(f"Error writing session data: {e}")
-
-
-# Function to get user session (retrieve from session.json)
-def get_user_session():
-    if os.path.exists(SESSION_FILE):
-        with open(SESSION_FILE, "r") as file:
-            return json.load(file)
-    return None  # If the file does not exist, no user is logged in
-
-# Function to clear user session (delete session.json)
-def clear_user_session():
-    if os.path.exists(SESSION_FILE):
-        os.remove(SESSION_FILE)
-        print("Session cleared.")
 
 
 def open_admin_panel():
@@ -93,14 +99,6 @@ def open_admin_panel():
     display_statistics_chart()
     display_revenue_chart()
     display_car_usage_pie_chart()
-
-def check_session():
-    admin_session = get_admin_session()
-    print("Session data:", admin_session)
-    if admin_session:
-        print(f"Logged in as Admin ID {admin_session['admin_id']} ({admin_session['username']})")
-    else:
-        print("No admin logged in.")
 
 # Function to place buttons in the admin panel
 def place_buttons_on_image():
@@ -422,32 +420,37 @@ def display_car_usage_pie_chart():
         )
 
 
+
+
 def display_car_availability():
-    admin_session = get_admin_session()
-    if not admin_session:
-        messagebox.showerror("Error", "You must be logged in as an admin to view cars.")
+    # Retrieve the logged-in admin's session data
+    admin_session = Session.get_admin_session()
+    if not admin_session or "admin_id" not in admin_session:
+        messagebox.showerror("Error", "You must be logged in as an admin to view car availability.")
         return
 
     admin_id = admin_session["admin_id"]  # Retrieve AdminID from session
-    print(f"Admin ID from session: {admin_id}")  # Debugging print
+    print(f"Displaying cars for Admin ID: {admin_id}")  # Debugging print
 
-    car_availability_frame.pack(fill=tk.BOTH, expand=True)  # Show the car availability frame
-    admin_frame.pack_forget()  # Hide admin panel
+    # Show the car availability frame and hide the admin panel
+    car_availability_frame.pack(fill=tk.BOTH, expand=True)
+    admin_frame.pack_forget()
 
-    # Clear previous entries
+    # Clear previous entries in the treeview
     for row in car_tree.get_children():
         car_tree.delete(row)
 
     try:
+        # Connect to the database and fetch cars associated with the AdminID
         conn = sqlite3.connect("Carmala.db")  # Replace with your actual DB path
         cursor = conn.cursor()
 
-        # Query to fetch cars associated with the AdminID
         cursor.execute("""
             SELECT * FROM CarList WHERE AdminID = ?
         """, (admin_id,))
         rows = cursor.fetchall()
 
+        # Insert fetched data into the treeview
         if rows:
             for row in rows:
                 car_tree.insert("", tk.END, values=row)
@@ -642,10 +645,12 @@ def open_add_car_form():
     submit_button.pack(pady=20)
 
 def logout():
-    if os.path.exists(ADMIN_SESSION_FILE):
-        os.remove(ADMIN_SESSION_FILE)
-    messagebox.showinfo("Logged Out", "You have successfully logged out.")
-    root.destroy()  # Close the application
+    """Logout the admin and clear the session."""
+    clear_admin_session()
+    messagebox.showinfo("Logout", "You have been logged out.")
+    os.system("python Login.py")  # Redirect to the login page
+    exit()
+
 
 
 def add_car(name, location, capacity, fueltype, transmission, features, price, image_url, window):
@@ -776,16 +781,16 @@ def edit_car(car_id, name, location, capacity, fueltype, transmission, features,
     messagebox.showinfo("Edit Car", "Car details updated successfully.")
 
 def display_booking_history():
-    admin_session = get_admin_session()
-    if not admin_session:
+    # Retrieve the logged-in admin's session data
+    admin_session = Session.get_admin_session()
+    if not admin_session or "admin_id" not in admin_session:
         messagebox.showerror("Error", "You must be logged in as an admin to view booking history.")
         return
 
     admin_id = admin_session["admin_id"]  # Retrieve AdminID from session
-    booking_history_frame.pack(fill=tk.BOTH, expand=True)  # Show booking history frame
-    admin_frame.pack_forget()  # Hide admin panel
+    print(f"Displaying booking history for Admin ID: {admin_id}")  # Debugging print
 
-    # Clear previous entries
+    # Clear previous entries in the treeview
     for row in booking_tree.get_children():
         booking_tree.delete(row)
 
@@ -811,18 +816,21 @@ def display_booking_history():
         messagebox.showerror("Database Error", f"An error occurred: {e}")
 
 
-
 def display_pending_bookings():
-    admin_session = get_admin_session()
-    if not admin_session:
-        messagebox.showerror("Error", "You must be logged in as an admin to view bookings.")
+    # Retrieve the logged-in admin's session data
+    admin_session = Session.get_admin_session()
+    if not admin_session or "admin_id" not in admin_session:
+        messagebox.showerror("Error", "You must be logged in as an admin to view pending bookings.")
         return
 
     admin_id = admin_session["admin_id"]  # Retrieve AdminID from session
-    pending_bookings_frame.pack(fill=tk.BOTH, expand=True)  # Show the pending bookings frame
-    admin_frame.pack_forget()  # Hide admin panel
+    print(f"Displaying pending bookings for Admin ID: {admin_id}")  # Debugging print
 
-    # Clear previous entries
+    # Show the pending bookings frame and hide the admin panel
+    pending_bookings_frame.pack(fill=tk.BOTH, expand=True)
+    admin_frame.pack_forget()
+
+    # Clear previous entries in the treeview
     for row in pending_bookings_tree.get_children():
         pending_bookings_tree.delete(row)
 
@@ -830,7 +838,7 @@ def display_pending_bookings():
         conn = sqlite3.connect("Carmala.db")  # Replace with your actual DB path
         cursor = conn.cursor()
 
-        # Filter bookings where AdminID matches
+        # Fetch pending bookings for the admin
         cursor.execute("""
             SELECT BookingID, UserID, CarID, PickupDate, DropoffDate, BookingStatus
             FROM Booking
@@ -838,7 +846,7 @@ def display_pending_bookings():
         """, (admin_id,))
         rows = cursor.fetchall()
 
-        # Insert data into the Pending Bookings Treeview
+        # Insert data into the treeview
         for row in rows:
             pending_bookings_tree.insert("", tk.END, values=row)
 
@@ -846,6 +854,63 @@ def display_pending_bookings():
 
     except sqlite3.Error as e:
         messagebox.showerror("Database Error", f"An error occurred: {e}")
+# Function to open the feedback page
+def open_feedback_page():
+    # Check if the admin is logged in
+    admin_session = Session.get_admin_session()
+    if not admin_session:
+        messagebox.showerror("Error", "Admin not logged in.")
+        return
+
+    admin_id = admin_session["admin_id"]
+
+    # Open the customer feedback page
+    fetch_customer_feedback(admin_id)
+
+
+def fetch_customer_feedback(admin_id):
+    try:
+        conn = sqlite3.connect('Carmala.db')  # Replace with your actual database path
+        cursor = conn.cursor()
+
+        # Query the Rating table to fetch the feedback for this Admin
+        cursor.execute("""
+            SELECT RatingID, UserID, Stars, Comment FROM Rating WHERE AdminID = ?
+        """, (admin_id,))
+
+        rows = cursor.fetchall()
+        if rows:
+            # Pass the feedback data to display_feedback
+            display_feedback(rows)
+        else:
+            messagebox.showinfo("No Feedback", "No customer feedback available.")
+
+        conn.close()
+
+    except sqlite3.Error as e:
+        messagebox.showerror("Database Error", f"An error occurred: {e}")
+
+
+def display_feedback(feedback_data):
+    # Create a new window or frame for displaying feedback
+    feedback_window = tk.Toplevel(root)
+    feedback_window.title("Customer Feedback")
+    feedback_window.geometry("600x400")
+
+    # Create a treeview for displaying feedback
+    feedback_tree = ttk.Treeview(feedback_window, columns=("RatingID", "UserID", "Stars", "Comment"), show="headings")
+    feedback_tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+    # Define column headings
+    feedback_tree.heading("RatingID", text="Rating ID")
+    feedback_tree.heading("UserID", text="User ID")
+    feedback_tree.heading("Stars", text="Stars")
+    feedback_tree.heading("Comment", text="Comment")
+
+    # Insert rows into the Treeview
+    for row in feedback_data:
+        feedback_tree.insert("", tk.END, values=row)
+
 
 
 # --- MAIN WINDOW SETUP --- #
@@ -1067,7 +1132,7 @@ admin_image_label.pack(fill=tk.BOTH, expand=True)
 # Admin panel buttons
 button_statistics = tk.Button(admin_frame, text="Booking History", font="Poppins", command=display_booking_history)
 button_pending_bookings = tk.Button(admin_frame, text="Pending Bookings", font="Poppins", command=display_pending_bookings)
-button_feedback = tk.Button(admin_frame, text="Customer Feedback", font="Poppins", command=lambda: print("Feedback"))
+button_feedback = tk.Button(admin_frame, text="Customer Feedback", font="Poppins", command=open_feedback_page)
 button_manage_cars = tk.Button(admin_frame, text="Show Cars", font="Poppins", command=display_car_availability)
 button_agencies = tk.Button(admin_frame, text="Agencies", font="Poppins", command=display_agencies_frame)
 button_settings = tk.Button(admin_frame, text="Settings", font="Poppins", command=lambda: print("Settings"))
