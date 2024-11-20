@@ -30,10 +30,12 @@ def fetch_booking_details(logged_in_user_id, order_by="BookingDate DESC", status
 
     query = '''
         SELECT Booking.BookingID, Booking.PickupDate, Booking.DropoffDate, Booking.BookingDate,
-               CarList.CarName, CarList.CarPrice, Booking.BookingStatus, CarList.CarID, AdminAccount.AdminID
+       CarList.CarName, CarList.CarPrice, Booking.BookingStatus, CarList.CarID, 
+       AdminAccount.AdminID, UserAccount.Email
         FROM Booking
         JOIN CarList ON Booking.CarID = CarList.CarID
         JOIN AdminAccount ON CarList.AdminID = AdminAccount.AdminID
+        JOIN UserAccount ON Booking.UserID = UserAccount.UserID
         WHERE Booking.UserID = ?
     '''
     if status_filter:
@@ -41,6 +43,8 @@ def fetch_booking_details(logged_in_user_id, order_by="BookingDate DESC", status
         cursor.execute(query + f" ORDER BY {order_by}", (logged_in_user_id, status_filter))
     else:
         cursor.execute(query + f" ORDER BY {order_by}", (logged_in_user_id,))
+
+
 
     bookings = cursor.fetchall()
     conn.close()
@@ -586,6 +590,11 @@ def open_payment_page(selected_bookings):
             part.add_header('Content-Disposition', f'attachment; filename="{receipt_file_path}"')
             msg.attach(part)
 
+        print(f"Admin Email: {admin_email}")
+        print(f"Recipient Email: {user_email}")
+        print(f"Booking Details: {booking}")
+        print(f"Receipt File Path: {receipt_file_path}")
+
         # Send the email via SMTP
         try:
             server = smtplib.SMTP('smtp.gmail.com', 587)
@@ -598,6 +607,10 @@ def open_payment_page(selected_bookings):
         except Exception as e:
             print(f"Error sending email: {e}")
 
+    def is_valid_email(email):
+        import re
+        return bool(re.match(r"[^@]+@[^@]+\.[^@]+", email))
+
     def finalize_payment(payment_type, card_window=None):
         try:
             total_price = sum([float(booking[5]) for booking in selected_bookings])
@@ -606,57 +619,29 @@ def open_payment_page(selected_bookings):
             if not confirm:
                 return
 
-            conn = sqlite3.connect('../Carmala.db')  # Adjust path if necessary
+            conn = sqlite3.connect('Carmala.db')  # Adjust path if necessary
             cursor = conn.cursor()
             payment_successful = True
 
             # Process each selected booking
             for booking in selected_bookings:
                 try:
-                    booking_id = booking[0]  # BookingID
-                    car_id = booking[7]  # CarID (updated index)
-                    car_price = booking[5]  # CarPrice
-                    user_id = booking[1]  # UserID
-                    payment_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    # Assuming email is at index 9 after updating your database query
+                    user_email = booking[9]
 
-                    # Fetch the admin_id from the CarList table
-                    cursor.execute("SELECT AdminID FROM CarList WHERE CarID = ?", (car_id,))
-                    admin_id_result = cursor.fetchone()
+                    # Validate the email address
+                    if not is_valid_email(user_email):
+                        print(f"Invalid email detected: {user_email}")
+                        messagebox.showerror("Error", f"Invalid email address: {user_email}")
+                        continue  # Skip processing this booking
 
-                    # Debugging: Print the result of the AdminID query
-                    print(f"Fetching AdminID for CarID {car_id}: {admin_id_result}")
+                    # Proceed with email and payment processing
+                    send_email(user_email, booking, total_price)
 
-                    if admin_id_result:
-                        admin_id = admin_id_result[0]  # AdminID
-                        print(f"AdminID for CarID {car_id}: {admin_id}")  # Debugging: Check if AdminID is fetched
-                    else:
-                        admin_id = None  # Handle case if AdminID is not found
-                        print(f"AdminID not found for CarID {car_id}. Setting to None.")  # Debugging: Missing AdminID
-
-                    if admin_id is None:
-                        messagebox.showerror("Error",
-                                             f"AdminID is missing for CarID {car_id}. Cannot proceed with payment.")
-                        return  # Stop further processing if AdminID is missing
-
-                    # Insert into PaymentTable
-                    cursor.execute('''
-                        INSERT INTO PaymentTable (PaymentType, BookingID, CarID, Amount, UserID, Date, AdminID)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
-                    ''', (payment_type, booking_id, car_id, car_price, user_id, payment_date, admin_id))
-
-                    # Update Booking Status to 'Paid'
-                    cursor.execute('''
-                        UPDATE Booking
-                        SET BookingStatus = 'Paid'
-                        WHERE BookingID = ?
-                    ''', (booking_id,))
-
-                    # Generate and send email with receipt
-                    generate_receipt_pdf(booking, total_price)  # Generate the PDF receipt
-                    send_email(booking[3], booking, total_price)  # Send the email to the user
+                    # Other payment processing logic here...
 
                 except Exception as e:
-                    print(f"Error processing booking {booking_id}: {e}")
+                    print(f"Error processing booking {booking[0]}: {e}")
                     messagebox.showerror("Error", f"Unexpected error: {e}")
                     payment_successful = False
 

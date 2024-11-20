@@ -46,7 +46,7 @@ def get_available_cars(location, pickup_date, return_date):
         if isinstance(pickup_date, str):
             pickup_date = datetime.strptime(pickup_date, "%Y-%m-%d").date()
         if isinstance(return_date, str):
-            dropoff_date = datetime.strptime(return_date, "%Y-%m-%d").date()
+            return_date = datetime.strptime(return_date, "%Y-%m-%d").date()
 
         # Fetch cars from CARTABLE that are available in the given location and date range
         cursor.execute('''
@@ -55,7 +55,7 @@ def get_available_cars(location, pickup_date, return_date):
             FROM CarList AS c
             LEFT JOIN Booking AS b ON c.CarID = b.CarID
             WHERE LOWER(c.CarLocation) = LOWER(?)
-              AND (b.PickupDate IS NULL OR b.DropoffDate IS NULL 
+              AND (b.PickupDate IS NULL OR b.DropoffDate IS NULL
                    OR b.DropoffDate < ? OR b.PickupDate > ?)
         ''', (location, pickup_date, return_date))
 
