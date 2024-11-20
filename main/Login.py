@@ -18,7 +18,7 @@ def login():
 
     # Connect to the database to verify credentials
     try:
-        conn = sqlite3.connect(r"C:\Users\User\Downloads\Carmala\main\carmala.db")
+        conn = sqlite3.connect("carmala.db")
         cursor = conn.cursor()
 
         # First, check if the credentials match a user
@@ -27,13 +27,13 @@ def login():
 
         # If no matching user is found, check if the credentials match an admin
         if not user:
-            cursor.execute('''SELECT AdminID, AdminUsername FROM AdminAccount WHERE AdminUsername = ? AND AdminPassword = ?''', (username, password))
+            cursor.execute('''SELECT AdminID, AdminUsername, SuperAdmin FROM AdminAccount WHERE AdminUsername = ? AND AdminPassword = ?''', (username, password))
             admin = cursor.fetchone()
 
             if admin:
-                admin_id, admin_username = admin
-                # Save the session data (admin_id and username)
-                admin_data = {"admin_id": admin_id, "username": admin_username}
+                admin_id, admin_username, is_superadmin = admin
+                # Save the session data (admin_id, username, and SuperAdmin status)
+                admin_data = {"admin_id": admin_id, "username": admin_username, "SuperAdmin": is_superadmin}
                 Session.set_admin_session(admin_data)  # Save admin session
 
                 messagebox.showinfo("Admin Login Success", f"Welcome {admin_username}!")
