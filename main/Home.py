@@ -173,61 +173,72 @@ def log_out():
     subprocess.Popen(["python", "Login.py"])
 
 def submit_rating():
+    # Get the selected rating, comment, and selected car
     rating = rating_var.get()  # Get the selected rating (1 to 5)
     comment = comment_entry.get("1.0", "end").strip()  # Get the optional comment
     selected_car = car_combobox.get()  # Retrieve the selected car's name
 
+    # Ensure a car is selected
     if not selected_car:
-        ctk.CTkMessagebox(title="No Car Selected", message="Please select a car before submitting.")
+        messagebox.showwarning("No Car Selected", "Please select a car before submitting.")
         return
 
+    # Ensure the user is logged in
     logged_in_user = Session.get_user_session()  # Retrieve the logged-in user
     if not logged_in_user:
-        ctk.CTkMessagebox(title="Not Logged In", message="Please log in to submit a rating.")
+        messagebox.showwarning("Not Logged In", "Please log in to submit a rating.")
         return
 
     user_id = logged_in_user.get("user_id")
 
-    if rating > 0:
-        try:
-            conn = sqlite3.connect("Carmala.db")
-            cursor = conn.cursor()
+    # Ensure a rating is selected
+    if rating == 0:
+        messagebox.showwarning("No Rating", "Please select a rating before submitting.")
+        return
 
-            # Get CarID from CarList
-            cursor.execute("SELECT CarID FROM CarList WHERE CarName = ?", (selected_car,))
-            car_id = cursor.fetchone()
-            if not car_id:
-                raise ValueError("Selected car not found in the database.")
-            car_id = car_id[0]
+    try:
+        # Connect to the database
+        conn = sqlite3.connect("Carmala.db")
+        cursor = conn.cursor()
 
-            # Insert the rating into the database
-            cursor.execute(
-                "INSERT INTO Rating (UserID, CarID, Stars, Comment) VALUES (?, ?, ?, ?)",
-                (user_id, car_id, rating, comment),
-            )
+        # Get the CarID from CarList based on the selected car
+        cursor.execute("SELECT CarID FROM CarList WHERE CarName = ?", (selected_car,))
+        car_id = cursor.fetchone()
 
-            conn.commit()
-            conn.close()
+        if not car_id:
+            raise ValueError("Selected car not found in the database.")
+        car_id = car_id[0]
 
-            # Notify the user
-            ctk.CTkMessagebox(title="Thank You", message="Your rating has been submitted!")
-            print(f"Rating: {rating} star(s)")
-            print(f"Car: {selected_car}")
-            print(f"Comment: {comment if comment else 'No comment provided'}")
+        # Insert the rating into the Rating table
+        cursor.execute(
+            "INSERT INTO Rating (UserID, CarID, Stars, Comment) VALUES (?, ?, ?, ?)",
+            (user_id, car_id, rating, comment),
+        )
 
-            # Reset fields
-            rating_var.set(0)
-            comment_entry.delete("1.0", "end")
-            car_combobox.set("")
-            for star in stars:
-                star.configure(text="☆")
+        conn.commit()
+        conn.close()
 
-        except sqlite3.Error as e:
-            ctk.CTkMessagebox(title="Database Error", message=f"An error occurred: {e}")
-        except ValueError as ve:
-            ctk.CTkMessagebox(title="Error", message=str(ve))
-    else:
-        ctk.CTkMessagebox(title="No Rating", message="Please select a rating before submitting.")
+        # Notify the user that the rating was submitted
+        messagebox.showinfo("Thank You", "Your rating has been submitted!")
+        print(f"Rating: {rating} star(s)")
+        print(f"Car: {selected_car}")
+        print(f"Comment: {comment if comment else 'No comment provided'}")
+
+        # Reset fields after successful submission
+        rating_var.set(0)
+        comment_entry.delete("1.0", "end")
+        car_combobox.set("")
+
+        # Reset the star display
+        for star in stars:
+            star.configure(text="☆")
+
+    except sqlite3.Error as e:
+        messagebox.showerror("Database Error", f"An error occurred while submitting your rating: {e}")
+    except ValueError as ve:
+        messagebox.showerror("Error", str(ve))
+    except Exception as e:
+        messagebox.showerror("Unexpected Error", f"An unexpected error occurred: {e}")
 
 
 def open_rating_window():
@@ -285,7 +296,7 @@ def open_rating_window():
             SELECT CarList.CarName 
             FROM Booking
             INNER JOIN CarList ON Booking.CarID = CarList.CarID
-            WHERE Booking.UserID = ? AND Booking.BookingStatus = 'Approved'
+            WHERE Booking.UserID = ? AND Booking.BookingStatus = 'Paid'
         """, (Session.get_user_session().get("user_id"),))
         car_names = [row[0] for row in cursor.fetchall()]
         conn.close()
