@@ -5,6 +5,13 @@ import sqlite3
 import os
 from datetime import datetime
 import Session
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
 
 # Get the logged-in user's information
 logged_in_user = Session.get_user_session()
@@ -17,14 +24,13 @@ else:
     user_id = None  # Set user_id to None if no user is logged in
 
 
-# Function to fetch booking details
 def fetch_booking_details(logged_in_user_id, order_by="BookingDate DESC", status_filter=None):
     conn = sqlite3.connect('Carmala.db')
     cursor = conn.cursor()
 
     query = '''
         SELECT Booking.BookingID, Booking.PickupDate, Booking.DropoffDate, Booking.BookingDate,
-               CarList.CarName, CarList.CarPrice, Booking.BookingStatus, AdminAccount.AdminID
+               CarList.CarName, CarList.CarPrice, Booking.BookingStatus, CarList.CarID, AdminAccount.AdminID
         FROM Booking
         JOIN CarList ON Booking.CarID = CarList.CarID
         JOIN AdminAccount ON CarList.AdminID = AdminAccount.AdminID
@@ -195,7 +201,6 @@ def cancel_booking():
 def go_to_home():
     booking_window.destroy()
 
-# Proceed to payment
 def proceed_to_payment(treeview):
     selected_items = treeview.selection()
     if not selected_items:
@@ -209,12 +214,30 @@ def proceed_to_payment(treeview):
 
     # Check for missing or invalid data in the selected bookings
     for booking in selected_bookings:
-        if len(booking) < 6 or not isinstance(booking[5], (int, float, str)):
+        if len(booking) < 7:  # Adjusted to match the number of fields in the selected bookings
             messagebox.showerror("Error", f"Invalid data for booking: {booking}")
             return
 
-    booking_window.withdraw()
-    open_payment_page(selected_bookings)
+    # Check if the BookingStatus for each selected booking allows proceeding to payment
+    for booking in selected_bookings:
+        booking_status = booking[6]  # Assuming BookingStatus is at index 6
+
+        if booking_status == 'Approved':
+            # Proceed to payment
+            booking_window.withdraw()
+            open_payment_page(selected_bookings)
+        elif booking_status == 'Rejected':
+            messagebox.showerror("Payment Error", "You cannot proceed to payment because your booking was rejected.")
+            return
+        elif booking_status == 'Pending':
+            messagebox.showwarning("Payment Warning", "Your booking is still pending approval. You cannot proceed to payment.")
+            return
+        elif booking_status == 'Paid':
+            messagebox.showinfo("Payment Info", "Your booking has already been paid. No further payments are required.")
+            return
+        else:
+            messagebox.showerror("Error", f"Unknown booking status: {booking_status}")
+            return
 
 
 # Main Function
@@ -222,13 +245,13 @@ def open_booking_details_window():
     global booking_window, treeview, filter_date_var, filter_status_var
     booking_window = tk.Tk()
     booking_window.title("Booking Details")
-    booking_window.geometry("1000x700")
+    booking_window.geometry("1280x700")
     booking_window.config(bg="#F1F1F1")
 
     frame = tk.Frame(booking_window, bg="#F1F1F1")
     frame.pack(padx=20, pady=20, fill=tk.BOTH, expand=True)
 
-    columns = ('BookingID', 'PickupDate', 'DropoffDate', 'BookingDate', 'CarName', 'BookingStatus')
+    columns = ('BookingID', 'PickupDate', 'DropoffDate', 'BookingDate', 'CarName', 'CarPrice', 'BookingStatus')
     treeview = ttk.Treeview(frame, columns=columns, show='headings', height=10)
     treeview.pack(fill=tk.BOTH, expand=True)
 
@@ -237,6 +260,7 @@ def open_booking_details_window():
     treeview.heading('DropoffDate', text='Dropoff Date')
     treeview.heading('BookingDate', text='Booking Date')
     treeview.heading('CarName', text='Car Name')
+    treeview.heading('CarPrice', text='Car Price (RM)')
     treeview.heading('BookingStatus', text='Booking Status')
 
     treeview.column('BookingID', width=100)
@@ -244,6 +268,7 @@ def open_booking_details_window():
     treeview.column('DropoffDate', width=150)
     treeview.column('BookingDate', width=150)
     treeview.column('CarName', width=200)
+    treeview.column('CarPrice', width=120)
     treeview.column('BookingStatus', width=200)
 
     # Add a note below the treeview
@@ -507,6 +532,72 @@ def open_payment_page(selected_bookings):
 
         finalize_payment(payment_type, card_window)
 
+    def generate_receipt_pdf(booking, total_price, file_path="receipt.pdf"):
+        c = canvas.Canvas(file_path, pagesize=letter)
+        width, height = letter
+
+        # Add details to the PDF
+        c.setFont("Helvetica", 12)
+        c.drawString(30, height - 40, f"Receipt for Booking {booking[0]}")
+        c.drawString(30, height - 60, f"Car: {booking[4]}")  # Car Name
+        c.drawString(30, height - 80, f"Pickup Date: {booking[1]}")
+        c.drawString(30, height - 100, f"Dropoff Date: {booking[2]}")
+        c.drawString(30, height - 120, f"Total Price: RM {total_price}")
+        c.drawString(30, height - 140, f"Username: {booking[3]}")  # Assuming booking[3] is the username
+        c.drawString(30, height - 160, f"Email: {booking[4]}")  # Assuming booking[4] is the email
+
+        # Footer with Admin contact info
+        admin_email = "admin@example.com"  # Replace with actual admin email
+        c.drawString(30, 30, f"Contact Admin: {admin_email}")
+
+        c.save()
+
+    def send_email(user_email, booking, total_price, receipt_file_path="receipt.pdf"):
+        admin_email = "killerpill585@gmail.com"  # Replace with actual admin email
+        admin_password = "oxey jnwo qybz etmg"  # Replace with actual admin email password
+
+        # Create the email
+        msg = MIMEMultipart()
+        msg['From'] = admin_email
+        msg['To'] = user_email
+        msg['Subject'] = "Booking Confirmation and Receipt"
+
+        # Body of the email
+        body = f"""
+        Dear {booking[3]}, 
+
+        Your booking for the car {booking[4]} has been successfully processed.
+
+        Booking Details:
+        Pickup Date: {booking[1]}
+        Dropoff Date: {booking[2]}
+        Total Price: RM {total_price}
+
+        If you have any questions, feel free to contact the admin at {admin_email}.
+        """
+
+        msg.attach(MIMEText(body, 'plain'))
+
+        # Attach the receipt PDF
+        with open(receipt_file_path, "rb") as attachment:
+            part = MIMEBase('application', 'octet-stream')
+            part.set_payload(attachment.read())
+            encoders.encode_base64(part)
+            part.add_header('Content-Disposition', f'attachment; filename="{receipt_file_path}"')
+            msg.attach(part)
+
+        # Send the email via SMTP
+        try:
+            server = smtplib.SMTP('smtp.gmail.com', 587)
+            server.starttls()
+            server.login(admin_email, admin_password)
+            text = msg.as_string()
+            server.sendmail(admin_email, user_email, text)
+            server.quit()
+            print("Email sent successfully!")
+        except Exception as e:
+            print(f"Error sending email: {e}")
+
     def finalize_payment(payment_type, card_window=None):
         try:
             total_price = sum([float(booking[5]) for booking in selected_bookings])
@@ -515,40 +606,69 @@ def open_payment_page(selected_bookings):
             if not confirm:
                 return
 
-            # Process payment and update the database
-            conn = sqlite3.connect('../Carmala.db')
+            conn = sqlite3.connect('../Carmala.db')  # Adjust path if necessary
             cursor = conn.cursor()
             payment_successful = True
 
+            # Process each selected booking
             for booking in selected_bookings:
                 try:
-                    booking_id = booking[0]
-                    car_id = booking[6]
-                    car_price = booking[5]
-                    admin_id = booking[7]
-
+                    booking_id = booking[0]  # BookingID
+                    car_id = booking[7]  # CarID (updated index)
+                    car_price = booking[5]  # CarPrice
+                    user_id = booking[1]  # UserID
                     payment_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+                    # Fetch the admin_id from the CarList table
+                    cursor.execute("SELECT AdminID FROM CarList WHERE CarID = ?", (car_id,))
+                    admin_id_result = cursor.fetchone()
+
+                    # Debugging: Print the result of the AdminID query
+                    print(f"Fetching AdminID for CarID {car_id}: {admin_id_result}")
+
+                    if admin_id_result:
+                        admin_id = admin_id_result[0]  # AdminID
+                        print(f"AdminID for CarID {car_id}: {admin_id}")  # Debugging: Check if AdminID is fetched
+                    else:
+                        admin_id = None  # Handle case if AdminID is not found
+                        print(f"AdminID not found for CarID {car_id}. Setting to None.")  # Debugging: Missing AdminID
+
+                    if admin_id is None:
+                        messagebox.showerror("Error",
+                                             f"AdminID is missing for CarID {car_id}. Cannot proceed with payment.")
+                        return  # Stop further processing if AdminID is missing
+
+                    # Insert into PaymentTable
                     cursor.execute('''
                         INSERT INTO PaymentTable (PaymentType, BookingID, CarID, Amount, UserID, Date, AdminID)
                         VALUES (?, ?, ?, ?, ?, ?, ?)
                     ''', (payment_type, booking_id, car_id, car_price, user_id, payment_date, admin_id))
 
+                    # Update Booking Status to 'Paid'
                     cursor.execute('''
                         UPDATE Booking
                         SET BookingStatus = 'Paid'
                         WHERE BookingID = ?
                     ''', (booking_id,))
 
+                    # Generate and send email with receipt
+                    generate_receipt_pdf(booking, total_price)  # Generate the PDF receipt
+                    send_email(booking[3], booking, total_price)  # Send the email to the user
+
                 except Exception as e:
-                    print("Error processing booking:", e)
+                    print(f"Error processing booking {booking_id}: {e}")
                     messagebox.showerror("Error", f"Unexpected error: {e}")
                     payment_successful = False
 
             if payment_successful:
                 conn.commit()
-                messagebox.showinfo("Success", "Payment completed successfully! A receipt and payment confirmation email will be sent to your inbox.")
+                messagebox.showinfo("Success", "Payment completed successfully! A receipt has been sent to your email.")
                 if card_window:
-                    card_window.destroy()
+                    card_window.destroy()  # Close the payment window
+
+                # Return to the Booking Details window
+                booking_window.deiconify()  # Assuming you have this window referenced
+
             else:
                 messagebox.showerror("Payment Error", "Payment failed. No changes were committed.")
 
