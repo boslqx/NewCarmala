@@ -396,15 +396,15 @@ def open_payment_page(selected_bookings, total_price):
     price_label.place(x=593, y=500)
 
     # Payment Option Buttons
-    button_e_wallet = tk.Button(payment_window, text="E-Wallet", font=("Arial", 14), bg="#0F4EDE", fg="white",
+    button_e_wallet = tk.Button(payment_window, text="E-Wallet", font=("Arial", 14, "bold"), bg="#0F4EDE", fg="white",
                                 command=lambda: process_payment("E-Wallet"))
     button_e_wallet.place(x=120, y=590, width=230, height=70)
 
-    button_online_banking = tk.Button(payment_window, text="Online Banking", font=("Arial", 14), bg="#0BDFDF",
+    button_online_banking = tk.Button(payment_window, text="Online Banking", font=("Arial", 14, "bold"), bg="#0BDFDF",
                                       fg="white", command=lambda: process_payment("Online Banking"))
     button_online_banking.place(x=335, y=590, width=230, height=70)
 
-    button_card = tk.Button(payment_window, text="Credit/Debit Card", font=("Arial", 14), bg="#0CBDA8", fg="white",
+    button_card = tk.Button(payment_window, text="Credit/Debit Card", font=("Arial", 14, "bold"), bg="#0CBDA8", fg="white",
                             command=lambda: process_payment("Credit/Debit Card"))
     button_card.place(x=560, y=590, width=230, height=70)
 
