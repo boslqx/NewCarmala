@@ -18,7 +18,7 @@ else:
 
 
 def fetch_booking_details():
-    conn = sqlite3.connect('Carmala.db')
+    conn = sqlite3.connect('../Carmala.db')
     cursor = conn.cursor()
 
     query = '''
@@ -264,7 +264,7 @@ def open_payment_page(selected_bookings):
                 return
 
             # Proceed with payment processing (DB insertions, etc.)
-            conn = sqlite3.connect('Carmala.db')
+            conn = sqlite3.connect('../Carmala.db')
             cursor = conn.cursor()
             payment_successful = True
 
@@ -377,7 +377,7 @@ def go_to_home():
 # Admin approval logic (to be implemented separately)
 def approve_booking(booking_id):
     try:
-        conn = sqlite3.connect('Carmala.db')
+        conn = sqlite3.connect('../Carmala.db')
         cursor = conn.cursor()
 
         # Fetch the booking details
