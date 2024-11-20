@@ -9,64 +9,9 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from tkinter import simpledialog
-import json
 
-# The login function to verify user or admin credentials
-def login():
-    username = entry_username.get().strip()  # Trim any leading/trailing spaces
-    password = entry_password.get().strip()  # Trim any leading/trailing spaces
-
-    # Connect to the database to verify credentials
-    try:
-        conn = sqlite3.connect("carmala.db")
-        cursor = conn.cursor()
-
-        # First, check if the credentials match a user
-        cursor.execute('''SELECT UserID FROM UserAccount WHERE Username = ? AND Password = ?''', (username, password))
-        user = cursor.fetchone()
-
-        # If no matching user is found, check if the credentials match an admin
-        if not user:
-            cursor.execute('''SELECT AdminID, AdminUsername, SuperAdmin FROM AdminAccount WHERE AdminUsername = ? AND AdminPassword = ?''', (username, password))
-            admin = cursor.fetchone()
-
-            if admin:
-                admin_id, admin_username, is_superadmin = admin
-                # Save the session data (admin_id, username, and SuperAdmin status)
-                admin_data = {"admin_id": admin_id, "username": admin_username, "SuperAdmin": is_superadmin}
-                Session.set_admin_session(admin_data)  # Save admin session
-
-                messagebox.showinfo("Admin Login Success", f"Welcome {admin_username}!")
-
-                root.destroy()  # Close the current window
-                open_admin_page()  # Open home page for admin
-            else:
-                messagebox.showerror("Login Failed", "Invalid username or password.")
-        else:
-            user_id = user[0]
-            conn.close()
-            messagebox.showinfo("Login Success", "You have successfully logged in!")
-
-            # Set session for user login
-            Session.set_user_session({"user_id": user_id})
-
-            root.destroy()  # Close the login window
-            open_home(user_id)
-
-    except sqlite3.Error as e:
-        messagebox.showerror("Database Error", f"An error occurred: {e}")
-    finally:
-        conn.close()  # Make sure the connection is closed
-
-
-# Path for the session file
-ADMIN_SESSION_FILE = "AdminSession.json"
-
-# Function to log in as admin
-def admin_login():
-    username = entry_username.get()
-    password = entry_password.get()
-
+# Initialize the verification code globally
+verification_code = None
 
 
 # Function to generate a random 4-digit code
@@ -190,6 +135,53 @@ def register_user():
         except sqlite3.IntegrityError:
             messagebox.showerror("Error", "Username already exists!")
 
+
+logged_in_user = None
+
+# Login function to verify user or admin credentials
+def login():
+    username = entry_username.get().strip()  # Trim any leading/trailing spaces
+    password = entry_password.get().strip()  # Trim any leading/trailing spaces
+
+    # Connect to the database to verify credentials
+    try:
+        conn = sqlite3.connect('Carmala.db')
+        cursor = conn.cursor()
+
+        # First, check if the credentials match a user
+        cursor.execute('''
+            SELECT UserID FROM UserAccount WHERE Username = ? AND Password = ?
+        ''', (username, password))
+        user = cursor.fetchone()
+
+        # If no matching user is found, check if the credentials match an admin
+        if not user:
+            cursor.execute('''
+                SELECT * FROM AdminAccount WHERE AdminUsername = ? AND AdminPassword = ?
+            ''', (username, password))
+            admin = cursor.fetchone()
+
+            if admin:
+                messagebox.showinfo("Admin Login Success", "Welcome Admin!")
+                root.destroy()  # Close the current window
+                open_admin_page()  # Open home page for admin
+            else:
+                messagebox.showerror("Login Failed", "Invalid username or password.")
+        else:
+            user_id = user[0]
+            conn.close()
+            messagebox.showinfo("Login Success", "You have successfully logged in!")
+
+            # Set session in file
+            Session.set_user_session({"user_id": user_id})
+
+            root.destroy()  # Close the login window
+            open_home(user_id)
+
+    except sqlite3.Error as e:
+        messagebox.showerror("Database Error", f"An error occurred: {e}")
+    finally:
+        conn.close()  # Make sure the connection is closed
 
 
 # Function to open the home page (replace with actual home page code)
@@ -328,12 +320,7 @@ def on_hover(button, color):
 
 def on_leave(button, color):
     button['bg'] = color
-# Toggle password visibility
-def toggle_password_visibility():
-    if show_password_var.get():
-        entry_password.config(show="")  # Show password
-    else:
-        entry_password.config(show="*")  # Hide password
+
 # Create the main window
 root = tk.Tk()
 root.title("Account Login Page")
@@ -353,7 +340,7 @@ login_frame.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
 
 # Create a frame for image on the right
 right_frame = tk.Frame(main_frame, bg='#F1F1F1', width=400)
-image_path = r"C:\Users\User\Downloads\WhatsApp Image 2024-09-24 at 23.17.29_16a30ce5.jpg"
+image_path = r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-09-24 200101.png"
 image = Image.open(image_path)
 image = ImageTk.PhotoImage(image)
 
@@ -434,18 +421,9 @@ label_reg_password.place(x=60, y=310)
 entry_reg_password = tk.Entry(registration_frame, show="", font=("Poppins", 14), width=25)
 entry_reg_password.place(x=63, y=335)
 
-
+# Add placeholder text for the password
 add_placeholder_password(entry_reg_password, "Enter your password")
-show_password_var = tk.BooleanVar()
-check_show_password = tk.Checkbutton(
-    login_frame,
-    text="Show Password",
-    variable=show_password_var,
-    command=toggle_password_visibility,
-    bg="#F1F1F1",
-    font=("Poppins", 10)
-)
-check_show_password.place(x=63, y=310)
+
 # Password requirements note
 label_password_note = tk.Label(registration_frame, text="Minimum 8 characters, no special characters", fg="grey",
                                bg='#F1F1F1')
