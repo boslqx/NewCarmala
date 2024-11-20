@@ -38,7 +38,7 @@ def get_available_cars(location, pickup_date, return_date):
             SELECT * FROM CarList
             WHERE LOWER(CarLocation) = LOWER(?)
             AND CarID NOT IN (
-                SELECT CarID FROM Booking
+                SELECT CarID FROM BookingHistory
                 WHERE (PickupDate <= ? AND DropoffDate >= ?)
             )
         """
@@ -173,149 +173,147 @@ def log_out():
     subprocess.Popen(["python", "Login.py"])
 
 def submit_rating():
-    rating = rating_var.get()  # Get the selected rating (1 to 5)
-    comment = comment_entry.get("1.0", "end").strip()  # Get the optional comment
-    selected_car = car_combobox.get()  # Retrieve the selected car's name
+    # Get the selected rating (1 to 5)
+    rating = rating_var.get()
 
+    # Get the optional comment (if any)
+    comment = comment_entry.get("1.0", tk.END).strip()
+
+    # Retrieve the selected car's ID
+    selected_car = car_combobox.get()
     if not selected_car:
-        ctk.CTkMessagebox(title="No Car Selected", message="Please select a car before submitting.")
+        messagebox.showwarning("No Car Selected", "Please select a car before submitting.")
         return
 
-    logged_in_user = Session.get_user_session()  # Retrieve the logged-in user
+    # Retrieve the logged-in user ID (assuming the session data is available)
+    logged_in_user = Session.get_user_session()
     if not logged_in_user:
-        ctk.CTkMessagebox(title="Not Logged In", message="Please log in to submit a rating.")
+        messagebox.showwarning("Not Logged In", "Please log in to submit a rating.")
         return
 
     user_id = logged_in_user.get("user_id")
 
+    # Insert rating data into the database
     if rating > 0:
         try:
+            # Connect to the Carmala database
             conn = sqlite3.connect("Carmala.db")
             cursor = conn.cursor()
 
-            # Get CarID from CarList
-            cursor.execute("SELECT CarID FROM CarList WHERE CarName = ?", (selected_car,))
+            # Get the CarID based on the selected CarName
+            cursor.execute("""
+                SELECT CarID FROM CarList WHERE CarName = ?
+            """, (selected_car,))
             car_id = cursor.fetchone()
             if not car_id:
                 raise ValueError("Selected car not found in the database.")
             car_id = car_id[0]
 
-            # Insert the rating into the database
-            cursor.execute(
-                "INSERT INTO Rating (UserID, CarID, Stars, Comment) VALUES (?, ?, ?, ?)",
-                (user_id, car_id, rating, comment),
-            )
+            # Insert the rating into the Rating table
+            cursor.execute("""
+                INSERT INTO Rating (UserID, CarID, Stars, Comment) 
+                VALUES (?, ?, ?, ?)
+            """, (user_id, car_id, rating, comment))
 
+            # Commit the changes and close the connection
             conn.commit()
             conn.close()
 
-            # Notify the user
-            ctk.CTkMessagebox(title="Thank You", message="Your rating has been submitted!")
+            # Notify the user and clear the form
+            messagebox.showinfo("Thank You", "Your rating has been submitted!")
             print(f"Rating: {rating} star(s)")
             print(f"Car: {selected_car}")
             print(f"Comment: {comment if comment else 'No comment provided'}")
 
-            # Reset fields
+            # Clear the rating, comment fields, and reset the combobox
             rating_var.set(0)
-            comment_entry.delete("1.0", "end")
-            car_combobox.set("")
+            comment_entry.delete("1.0", tk.END)
+            car_combobox.set('')
             for star in stars:
-                star.configure(text="☆")
+                star.config(text="☆")
 
         except sqlite3.Error as e:
-            ctk.CTkMessagebox(title="Database Error", message=f"An error occurred: {e}")
+            messagebox.showerror("Database Error", f"An error occurred: {e}")
         except ValueError as ve:
-            ctk.CTkMessagebox(title="Error", message=str(ve))
+            messagebox.showerror("Error", str(ve))
     else:
-        ctk.CTkMessagebox(title="No Rating", message="Please select a rating before submitting.")
+        messagebox.showwarning("No Rating", "Please select a rating before submitting.")
 
 
 def open_rating_window():
     global rating_window, rating_var, comment_entry, stars, car_combobox
+    logged_in_user = Session.get_user_session()
 
-    # Create the rating window
-    rating_window = ctk.CTkToplevel()
+    if logged_in_user:
+        user_id = logged_in_user.get("user_id")
+        print(f"Logged in user ID: {user_id}")
+        # Proceed with loading user-specific data or UI
+    else:
+        print("No user is logged in.")
+        # Handle the case when no user is logged in
+
+    # Create a new top-level window for the rating UI
+    rating_window = tk.Toplevel(root)
     rating_window.title("Rate Your Experience")
     rating_window.geometry("500x400")
 
-    # Ensure focus stays on the rating window
-    rating_window.focus_force()
-
-    # Disable interaction with the main window
-    rating_window.grab_set()
-
-    # Add a handler to release grab and avoid issues when closing the window
-    def on_close():
-        rating_window.grab_release()
-        rating_window.destroy()
-
-    rating_window.protocol("WM_DELETE_WINDOW", on_close)
-
     # Label for the rating window
-    rating_label = ctk.CTkLabel(rating_window, text="Please rate your experience:", font=("Arial", 14))
+    rating_label = tk.Label(rating_window, text="Please rate your experience:", font=("Arial", 14))
     rating_label.pack(pady=10)
 
-    # Variable to store the rating
-    rating_var = ctk.IntVar(value=0)
+    # Variable to store the rating (1-5)
+    rating_var = tk.IntVar(value=0)
 
-    # Frame for star rating
-    star_frame = ctk.CTkFrame(rating_window)
+    # Frame for the star rating
+    star_frame = tk.Frame(rating_window)
     star_frame.pack(pady=10)
 
     # Create clickable star labels for rating
     stars = []
     for i in range(1, 6):
-        star_label = ctk.CTkLabel(star_frame, text="☆", font=("Arial", 24), fg_color="transparent", text_color="gold")
+        star_label = tk.Label(star_frame, text="☆", font=("Arial", 24), fg="gold")
         star_label.grid(row=0, column=i - 1, padx=5)
         star_label.bind("<Button-1>", lambda e, i=i: select_star(i))
         stars.append(star_label)
 
     # Dropdown for selecting the car
-    car_label = ctk.CTkLabel(rating_window, text="Select the car you booked:", font=("Arial", 10))
+    car_label = tk.Label(rating_window, text="Select the car you booked:", font=("Arial", 10))
     car_label.pack(pady=5)
 
-    car_combobox = ctk.CTkComboBox(rating_window, width=200)
+    car_combobox = ttk.Combobox(rating_window, state="readonly", width=30)
     car_combobox.pack(pady=5)
 
     # Fetch car names from BookingHistory and CarList
     try:
         conn = sqlite3.connect("Carmala.db")
         cursor = conn.cursor()
+
+        # Inner join BookingHistory and CarList to get CarName for the logged-in user
         cursor.execute("""
             SELECT CarList.CarName 
-            FROM Booking
-            INNER JOIN CarList ON Booking.CarID = CarList.CarID
-            WHERE Booking.UserID = ? AND Booking.BookingStatus = 'Approved'
-        """, (Session.get_user_session().get("user_id"),))
+            FROM BookingHistory 
+            INNER JOIN CarList ON BookingHistory.CarID = CarList.CarID
+            WHERE BookingHistory.UserID = ?
+        """, (logged_in_user.get("user_id"),))
         car_names = [row[0] for row in cursor.fetchall()]
+
         conn.close()
 
-        car_combobox.configure(values=car_names)
+        # Populate the combobox
+        car_combobox['values'] = car_names
     except sqlite3.Error as e:
-        ctk.CTkMessagebox(title="Database Error", message=f"An error occurred while fetching car data: {e}")
+        messagebox.showerror("Database Error", f"An error occurred while fetching car data: {e}")
 
     # Label and entry box for additional comments
-    comment_label = ctk.CTkLabel(rating_window, text="Leave a comment (optional):", font=("Arial", 10))
+    comment_label = tk.Label(rating_window, text="Leave a comment (optional):", font=("Arial", 10))
     comment_label.pack(pady=10)
-
-    comment_entry = ctk.CTkTextbox(rating_window, height=100, width=300)
+    comment_entry = tk.Text(rating_window, height=4, width=30)
     comment_entry.pack(pady=5)
 
-    # Submit button
-    submit_button = ctk.CTkButton(
-        rating_window, text="Submit", command=submit_rating, fg_color="#1572D3", hover_color="#0E4C92",
-        font=("Poppins", 10, "bold")
-    )
+    # Submit button to submit the rating and comment
+    submit_button = tk.Button(rating_window, text="Submit", command=submit_rating, bg="#1572D3", fg="white",
+                              font=("Poppins", 10, "bold"))
     submit_button.pack(pady=10)
-
-def select_star(rating):
-    """Function to handle star selection for the rating."""
-    rating_var.set(rating)
-    for i, star in enumerate(stars):
-        if i < rating:
-            star.configure(text="★")  # Filled star
-        else:
-            star.configure(text="☆")  # Empty star
 
 
 chat_window = None
