@@ -154,36 +154,36 @@ def fetch_car_data(capacity_filter=None, transmission_filter=None, features_filt
 
     # Base query
     query = """
+        SELECT DISTINCT c.CarID, c.CarName, c.CarLocation, c.CarCapacity, c.CarFueltype,
+                        c.CarTransmission, c.CarFeatures, c.CarPrice, c.CarImage, c.AdminID, 
+                        c.CarColour, c.CarType
+        FROM CarList AS c
+        LEFT JOIN Booking AS b ON c.CarID = b.CarID
+        WHERE (
+            b.BookingID IS NULL OR  -- Include cars with no bookings
+            NOT (b.PickupDate <= ? AND b.DropoffDate >= ?)  -- Exclude cars with overlapping bookings
+        )
+    """
+
+    params = []
+
+    # Add date filters if both pickup_date and dropoff_date are provided
+    if pickup_date and dropoff_date:
+        params.extend([pickup_date, dropoff_date])  # Correct order: pickup_date, dropoff_date
+    else:
+        # If no date filters are provided, exclude them from the query
+        query = """
             SELECT DISTINCT c.CarID, c.CarName, c.CarLocation, c.CarCapacity, c.CarFueltype,
                             c.CarTransmission, c.CarFeatures, c.CarPrice, c.CarImage, c.AdminID, 
                             c.CarColour, c.CarType
             FROM CarList AS c
             LEFT JOIN Booking AS b ON c.CarID = b.CarID
-            WHERE (
-                b.BookingID IS NULL OR  -- Include cars with no bookings
-                NOT (b.PickupDate <= ? AND b.DropoffDate >= ?)  -- Exclude cars with overlapping bookings
+            WHERE b.BookingID IS NULL OR NOT EXISTS (
+                SELECT 1 FROM Booking AS b2 WHERE b2.CarID = c.CarID
             )
         """
 
-    params = []
-
-    # Only add date filters if both pickup_date and dropoff_date are provided
-    if pickup_date and dropoff_date:
-        params.extend([dropoff_date, pickup_date])  # Order: dropoff_date, pickup_date
-    else:
-        # If dates are missing, adjust the query to remove date constraints
-        query = """
-                    SELECT DISTINCT c.CarID, c.CarName, c.CarLocation, c.CarCapacity, c.CarFueltype,
-                                    c.CarTransmission, c.CarFeatures, c.CarPrice, c.CarImage, c.AdminID, 
-                                    c.CarColour, c.CarType
-                    FROM CarList AS c
-                    LEFT JOIN Booking AS b ON c.CarID = b.CarID
-                    WHERE b.BookingID IS NULL OR NOT EXISTS (
-                        SELECT 1 FROM Booking AS b2 WHERE b2.CarID = c.CarID
-                    )
-                """
-
-    # Add additional filters based on dropdown selections
+    # Apply the additional filters (capacity, transmission, etc.)
     if capacity_filter:
         query += " AND c.CarCapacity = ?"
         params.append(capacity_filter)
@@ -196,16 +196,6 @@ def fetch_car_data(capacity_filter=None, transmission_filter=None, features_filt
         query += " AND c.CarFeatures LIKE ?"
         params.append(f"%{features_filter}%")
 
-    if price_filter:
-        if " ~ " in price_filter:  # For ranges like "600 ~ 1000"
-            min_price, max_price = map(int, price_filter.split(' ~ '))
-            query += " AND c.CarPrice BETWEEN ? AND ?"
-            params.extend([min_price, max_price])
-        elif ">" in price_filter:  # For ">1000"
-            min_price = int(price_filter.replace('>', '').strip())
-            query += " AND c.CarPrice > ?"
-            params.append(min_price)
-
     if colour_filter:
         query += " AND c.CarColour = ?"
         params.append(colour_filter)
@@ -213,6 +203,13 @@ def fetch_car_data(capacity_filter=None, transmission_filter=None, features_filt
     if car_type_filter:
         query += " AND c.CarType = ?"
         params.append(car_type_filter)
+
+    # Handle the price sort filter (Lowest to Highest or Highest to Lowest)
+    if price_filter:
+        if price_filter == "Lowest to Highest":
+            query += " ORDER BY CAST(c.CarPrice AS INTEGER) ASC"  # Sort by price ascending (lowest to highest)
+        elif price_filter == "Highest to Lowest":
+            query += " ORDER BY CAST(c.CarPrice AS INTEGER) DESC"  # Sort by price descending (highest to lowest)
 
     # Debug point: Print the query and parameters
     print(f"fetch_car_data: Query - {query}")
@@ -226,6 +223,7 @@ def fetch_car_data(capacity_filter=None, transmission_filter=None, features_filt
 
     connection.close()
     return car_list
+
 
 
 
@@ -263,9 +261,6 @@ def display_cars(filtered_cars=None):
             pickup_date, dropoff_date
         )
 
-    # Debug point: Print the received filtered cars
-    print(f"display_cars: Filtered cars received - {filtered_cars}")
-
     # Clear current car display
     for widget in car_frame.winfo_children():
         widget.destroy()
@@ -274,9 +269,6 @@ def display_cars(filtered_cars=None):
     start_index = current_page * cars_per_page
     end_index = start_index + cars_per_page
     cars_on_page = filtered_cars[start_index:end_index]
-
-    # Debug point: Print the cars being displayed
-    print(f"display_cars: Cars on page - {cars_on_page}")
 
     # Display cars for the current page
     for index, car_data in enumerate(cars_on_page):
@@ -686,7 +678,8 @@ transmission_dropdown = create_dropdown("Transmission", ["Automatic", "Manual"],
 features_dropdown = create_dropdown("Features", ["Aircon", "4-Wheel drive", "Auto-steering"], 800, 200)
 
 # Price filter
-price_dropdown = create_dropdown("Price", ["0 ~ 200", "200 ~ 400", "400 ~ 600", "600 ~ 1000",">1000"], 800, 230)
+price_dropdown = create_dropdown("Price", ["Lowest to Highest", "Highest to Lowest"], 800, 230)
+
 
 # Add Colour filter
 colour_dropdown = create_dropdown("Colour", ["Red", "White", "Green", "Grey", "Black", "Yellow", "Silver"], 800, 260)
