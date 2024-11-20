@@ -42,22 +42,24 @@ def get_available_cars(location, pickup_date, return_date):
         conn = sqlite3.connect('Carmala.db')
         cursor = conn.cursor()
 
-        # Convert to date only if pickup_date and dropoff_date are strings
+        # Convert to date if the inputs are strings
         if isinstance(pickup_date, str):
             pickup_date = datetime.strptime(pickup_date, "%Y-%m-%d").date()
         if isinstance(return_date, str):
             return_date = datetime.strptime(return_date, "%Y-%m-%d").date()
 
-        # Fetch cars from CARTABLE that are available in the given location and date range
+        # Improved query for filtering available cars
         cursor.execute('''
             SELECT c.CarID, c.CarName, c.CarLocation, c.CarCapacity, c.CarFueltype,
                    c.CarTransmission, c.CarFeatures, c.CarPrice, c.CarImage
             FROM CarList AS c
             LEFT JOIN Booking AS b ON c.CarID = b.CarID
             WHERE LOWER(c.CarLocation) = LOWER(?)
-              AND (b.PickupDate IS NULL OR b.DropoffDate IS NULL
-                   OR b.DropoffDate < ? OR b.PickupDate > ?)
-        ''', (location, pickup_date, return_date))
+              AND (
+                  b.BookingID IS NULL OR
+                  NOT (b.PickupDate <= ? AND b.DropoffDate >= ?)
+              )
+        ''', (location, return_date, pickup_date))  # Use return_date first, then pickup_date
 
         available_cars = cursor.fetchall()
         conn.close()
@@ -65,6 +67,8 @@ def get_available_cars(location, pickup_date, return_date):
     except Exception as e:
         print(f"Error fetching cars: {e}")
         return []
+
+
 
 # Functionality for the Search button
 def search_action():
@@ -399,10 +403,20 @@ def open_booking_list(user_id, pickup_date, dropoff_date):
             for car_id in selected_car_ids:
                 # Insert each booking, set status to 'Pending' and set the current date as BookingDate
                 print(f"Inserting booking for CarID: {car_id} with dates {pickup_date} to {return_date}")
+                # Fetch AdminID for the car
+                cursor.execute("SELECT AdminID FROM CarList WHERE CarID = ?", (car_id,))
+                admin_id_result = cursor.fetchone()
+                admin_id = admin_id_result[0] if admin_id_result else None
+
+                if admin_id is None:
+                    print(f"Error: AdminID not found for CarID {car_id}.")
+                    continue
+
+                # Insert the booking with AdminID
                 cursor.execute("""
-                    INSERT INTO Booking (UserID, CarID, PickupDate, DropoffDate, BookingStatus, BookingDate)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                """, (user_id, car_id, pickup_date, return_date, 'Pending', current_date))
+                        INSERT INTO Booking (UserID, CarID, PickupDate, DropoffDate, BookingStatus, BookingDate, AdminID)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """, (user_id, car_id, pickup_date, return_date, 'Pending', current_date, admin_id))
 
                 # Verify insertion
                 booking_id = cursor.lastrowid

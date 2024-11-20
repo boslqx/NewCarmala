@@ -213,35 +213,36 @@ def proceed_to_payment(treeview):
 
     selected_bookings = [treeview.item(item)["values"] for item in selected_items]
 
-    # Debugging: Check the structure of selected_bookings
+    # Debugging: Log selected bookings
     print("Selected bookings:", selected_bookings)
 
-    # Check for missing or invalid data in the selected bookings
+    total_price = 0  # Initialize total price
+
+    # Calculate total price based on the number of days booked
     for booking in selected_bookings:
-        if len(booking) < 7:  # Adjusted to match the number of fields in the selected bookings
-            messagebox.showerror("Error", f"Invalid data for booking: {booking}")
+        car_price = float(booking[5])  # CarPrice is at index 5
+        pickup_date = datetime.strptime(booking[1], "%Y-%m-%d")  # PickupDate is at index 1
+        dropoff_date = datetime.strptime(booking[2], "%Y-%m-%d")  # DropoffDate is at index 2
+
+        # Calculate number of days booked (inclusive)
+        days_booked = (dropoff_date - pickup_date).days + 1
+        print(f"Booking ID {booking[0]}: Pickup Date = {pickup_date}, Dropoff Date = {dropoff_date}, Days Booked = {days_booked}")
+
+        if days_booked < 0:
+            messagebox.showerror("Error", f"Invalid booking dates for booking ID: {booking[0]}")
             return
 
-    # Check if the BookingStatus for each selected booking allows proceeding to payment
-    for booking in selected_bookings:
-        booking_status = booking[6]  # Assuming BookingStatus is at index 6
+        # Calculate total price for this booking
+        booking_price = car_price * days_booked
+        print(f"Booking ID {booking[0]}: Car Price = RM{car_price}, Days Booked = {days_booked}, Total = RM{booking_price}")
+        total_price += booking_price
 
-        if booking_status == 'Approved':
-            # Proceed to payment
-            booking_window.withdraw()
-            open_payment_page(selected_bookings)
-        elif booking_status == 'Rejected':
-            messagebox.showerror("Payment Error", "You cannot proceed to payment because your booking was rejected.")
-            return
-        elif booking_status == 'Pending':
-            messagebox.showwarning("Payment Warning", "Your booking is still pending approval. You cannot proceed to payment.")
-            return
-        elif booking_status == 'Paid':
-            messagebox.showinfo("Payment Info", "Your booking has already been paid. No further payments are required.")
-            return
-        else:
-            messagebox.showerror("Error", f"Unknown booking status: {booking_status}")
-            return
+    # Debugging: Log total price
+    print(f"Total price for all bookings: RM{total_price}")
+    # Pass total price to the payment page
+    booking_window.withdraw()
+    open_payment_page(selected_bookings, total_price)
+
 
 
 # Main Function
@@ -327,7 +328,7 @@ def open_booking_details_window():
 
     booking_window.mainloop()
 
-def open_payment_page(selected_bookings):
+def open_payment_page(selected_bookings, total_price):
     global payment_window
     payment_window = tk.Toplevel(booking_window)
     payment_window.title("Checkout")
@@ -353,17 +354,6 @@ def open_payment_page(selected_bookings):
     button_back = tk.Button(payment_window, text="Back", font=("Arial", 10), bg="#0a47a3", command=go_back)
     button_back.place(x=900, y=125, width=90, height=40)
 
-    # Calculate total price and handle errors
-    try:
-        total_price = sum([float(booking[5]) for booking in selected_bookings])
-    except ValueError as e:
-        print("Error in total price calculation:", e)
-        messagebox.showerror("Error", "Invalid price data. Cannot calculate total price.")
-        return
-
-    # Debugging: Log total price
-    print("Total price:", total_price)
-
     # Booking Details Frame
     details_frame = tk.Frame(payment_window, bg="#FFFFFF", bd=2, relief=tk.GROOVE)
     details_frame.place(x=280, y=280, width=420, height=280)
@@ -387,7 +377,7 @@ def open_payment_page(selected_bookings):
             booking_info += (
                 f"Car: {car_name}, Price: RM{car_price}\n"
                 f"From: {pickup_date_formatted}, To: {dropoff_date_formatted}\n"
-                f"Days Booked: {days_booked} days\n\n"
+                f"Days Booked: {1 + days_booked} days\n\n"
             )
         except Exception as e:
             print(f"Error processing booking details for {booking}: {e}")
@@ -396,6 +386,10 @@ def open_payment_page(selected_bookings):
     booking_details_label = tk.Label(details_frame, text=booking_info, font=("Arial", 12), bg="#FFFFFF",
                                      justify="left", anchor="w")
     booking_details_label.pack(padx=10, pady=10)
+
+    # Debugging: Inspect total price and selected bookings
+    print(f"Total price passed to payment page: RM{total_price}")
+    print("Selected bookings passed to payment page:", selected_bookings)
 
     # Display total price
     price_label = tk.Label(payment_window, text=f"Total Price: RM{total_price}", font=("Arial", 14, "bold"), bg="#F1F1F1")
