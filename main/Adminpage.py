@@ -85,7 +85,7 @@ def open_admin_panel():
     right_frame.pack_forget()
 
     # Load and set admin-specific image background
-    admin_image_path = r"C:\Users\User\Downloads\Group 4.png"  # Add your path
+    admin_image_path = r"C:\Users\User\Downloads\Group 5.png"  # Add your path
     admin_image = Image.open(admin_image_path)
     admin_image = admin_image.resize((1280, 780), Image.LANCZOS)
     admin_photo = ImageTk.PhotoImage(admin_image)
@@ -103,7 +103,6 @@ def open_admin_panel():
 # Function to place buttons in the admin panel
 def place_buttons_on_image():
     # Side panel buttons
-    button_statistics.place(x=65, y=155, width=180, height=40)
     button_pending_bookings.place(x=65, y=205, width=180, height=40)
     button_feedback.place(x=65, y=255, width=180, height=40)
     button_manage_cars.place(x=65, y=305, width=180, height=40)
@@ -927,16 +926,22 @@ def display_pending_bookings():
         # SuperAdmin can view all pending bookings
         if is_superadmin:
             cursor.execute("""
-                SELECT BookingID, UserID, CarID, PickupDate, DropoffDate, BookingStatus
-                FROM Booking
-                WHERE BookingStatus = 'Pending'
+                SELECT 
+                    b.BookingID, b.UserID, b.CarID, c.CarName, 
+                    b.PickupDate, b.DropoffDate, b.BookingStatus
+                FROM Booking b
+                LEFT JOIN CarList c ON b.CarID = c.CarID
+                WHERE b.BookingStatus = 'Pending'
             """)
         else:
             # Regular admin can view only their bookings
             cursor.execute("""
-                SELECT BookingID, UserID, CarID, PickupDate, DropoffDate, BookingStatus
-                FROM Booking
-                WHERE BookingStatus = 'Pending' AND AdminID = ?
+                SELECT 
+                    b.BookingID, b.UserID, b.CarID, c.CarName, 
+                    b.PickupDate, b.DropoffDate, b.BookingStatus
+                FROM Booking b
+                LEFT JOIN CarList c ON b.CarID = c.CarID
+                WHERE b.BookingStatus = 'Pending' AND b.AdminID = ?
             """, (admin_id,))
 
         rows = cursor.fetchall()
@@ -949,6 +954,7 @@ def display_pending_bookings():
 
     except sqlite3.Error as e:
         messagebox.showerror("Database Error", f"An error occurred: {e}")
+
 
 def open_feedback_page():
     # Check if the admin is logged in
@@ -1231,7 +1237,7 @@ admin_image_label = tk.Label(admin_frame)
 admin_image_label.pack(fill=tk.BOTH, expand=True)
 
 # Admin panel buttons
-button_statistics = tk.Button(admin_frame, text="Booking History", font="Poppins", command=display_booking_history)
+
 button_pending_bookings = tk.Button(admin_frame, text="Pending Bookings", font="Poppins", command=display_pending_bookings)
 button_feedback = tk.Button(admin_frame, text="Customer Feedback", font="Poppins", command=open_feedback_page)
 button_manage_cars = tk.Button(admin_frame, text="Show Cars", font="Poppins", command=display_car_availability)
@@ -1346,11 +1352,12 @@ back_button = tk.Button(pending_bookings_frame, text="Back", command=lambda: [pe
 back_button.pack(pady=10)
 
 # Define columns for the Pending Bookings Treeview
-pending_bookings_columns = ("BookingID", "UserID", "CarID", "PickupDate", "DropoffDate", "BookingStatus")
+pending_bookings_columns = ("BookingID", "UserID", "CarID","CarName", "PickupDate", "DropoffDate", "BookingStatus")
 pending_bookings_tree = ttk.Treeview(pending_bookings_frame, columns=pending_bookings_columns, show="headings")
 pending_bookings_tree.heading("BookingID", text="Booking ID")
 pending_bookings_tree.heading("UserID", text="User ID")
 pending_bookings_tree.heading("CarID", text="Car ID")
+pending_bookings_tree.heading("CarName", text="Car Name")
 pending_bookings_tree.heading("PickupDate", text="Pickup Date")
 pending_bookings_tree.heading("DropoffDate", text="Dropoff Date")
 pending_bookings_tree.heading("BookingStatus", text="Booking Status")
