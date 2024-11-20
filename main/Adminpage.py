@@ -107,7 +107,7 @@ def place_buttons_on_image():
     button_feedback.place(x=65, y=255, width=180, height=40)
     button_manage_cars.place(x=65, y=305, width=180, height=40)
     button_agencies.place(x=65, y=355, width=180, height=40)
-    button_settings.place(x=65, y=405, width=180, height=40)
+
 
 def get_statistics_data():
     try:
@@ -121,7 +121,7 @@ def get_statistics_data():
         is_superadmin = admin_session.get("SuperAdmin", False)  # Check if the admin is a SuperAdmin
 
         # Connect to the database
-        conn = sqlite3.connect(R"C:\Users\User\Downloads\Carmala\main\Carmala.db")
+        conn = sqlite3.connect("Carmala.db")
         cursor = conn.cursor()
 
         # Conditional filtering for SuperAdmin
@@ -219,7 +219,7 @@ def get_revenue_statistics():
         is_superadmin = admin_session.get("SuperAdmin", False)  # Check if the admin is a SuperAdmin
 
         # Connect to the database
-        conn = sqlite3.connect(R"C:\Users\User\Downloads\Carmala\main\Carmala.db")
+        conn = sqlite3.connect("Carmala.db")
         cursor = conn.cursor()
 
         # Conditional filtering for SuperAdmin
@@ -383,7 +383,7 @@ def display_pie_chart(data, labels, title, x, y, width=400, height=300):
     # Embed the chart in the Tkinter admin panel
     canvas = FigureCanvasTkAgg(fig, master=admin_frame)
     canvas.draw()
-    canvas.get_tk_widget().place(x=300, y=500, width=900, height=height)
+    canvas.get_tk_widget().place(x=300, y=500, width=800, height=height)
 
 
 
@@ -400,7 +400,7 @@ def get_car_usage_data():
         is_superadmin = admin_session.get("SuperAdmin", False)  # Check if the admin is a SuperAdmin
 
         # Connect to the database
-        conn = sqlite3.connect(r"C:\Users\User\Downloads\Carmala\main\Carmala.db")
+        conn = sqlite3.connect("carmala.db")
         cursor = conn.cursor()
 
         # Conditional filtering for SuperAdmin
@@ -555,7 +555,7 @@ def display_agencies_frame():
         agency_tree.delete(row)
 
     # Fetch data from the database
-    conn = sqlite3.connect(R"C:\Users\User\Downloads\Carmala\main\Carmala.db")  # Replace with your actual DB path
+    conn = sqlite3.connect("Carmala.db")  # Replace with your actual DB path
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM AdminAccount")  # Adjust the query to match your table structure
     rows = cursor.fetchall()
@@ -584,14 +584,17 @@ def delete_selected_row():
     if confirm:
         try:
             # Delete from the database
-            conn = sqlite3.connect(R"C:\Users\User\Downloads\Carmala\main\Carmala.db")  # Replace with your actual DB path
+            conn = sqlite3.connect("Carmala.db")  # Replace with your actual DB path
             cursor = conn.cursor()
             cursor.execute("DELETE FROM CarList WHERE CarID=?", (car_id,))  # Corrected the variable name to car_id
-            conn.commit()
-            conn.close()
+            conn.commit()  # Ensure changes are committed to the database
+            conn.close()  # Always close the connection
 
-            # Delete the row from the Treeview
+            # Now that the car has been deleted from the database, remove it from the Treeview
             car_tree.delete(selected_item)
+
+            # Refresh the car availability list to reflect the deletion
+            display_car_availability()  # This function will re-query the database and update the Treeview
 
             messagebox.showinfo("Success", f"Car ID {car_id} has been deleted successfully.")
 
@@ -599,6 +602,7 @@ def delete_selected_row():
             messagebox.showerror("Error", f"An error occurred: {e}")
     else:
         messagebox.showinfo("Cancelled", "Deletion cancelled.")
+
 
 def delete_selected_agency():
     # Get selected item from Treeview
@@ -617,7 +621,7 @@ def delete_selected_agency():
     if confirm:
         try:
             # Delete from the database
-            conn = sqlite3.connect(R"C:\Users\User\Downloads\Carmala\main\Carmala.db")  # Replace with your actual database path
+            conn = sqlite3.connect("Carmala.db")  # Replace with your actual database path
             cursor = conn.cursor()
             cursor.execute("DELETE FROM AdminAccount WHERE AdminID=?", (AdminID,))  # Adjust to match your table structure
             conn.commit()
@@ -666,7 +670,7 @@ def add_new_agency(AdminID, AdminUsername, AdminPassword, AdminEmail, add_window
 
     try:
         # Insert new agency into the database
-        conn = sqlite3.connect(R"C:\Users\User\Downloads\Carmala\main\Carmala.db")  # Replace with your actual DB path
+        conn = sqlite3.connect("Carmala.db")  # Replace with your actual DB path
         cursor = conn.cursor()
         cursor.execute("INSERT INTO AdminAccount (AdminID, AdminUsername, AdminPassword, AdminEmail) VALUES (?, ?, ?, ?)",
                        (AdminID, AdminUsername, AdminPassword, AdminEmail))
@@ -823,19 +827,22 @@ def open_edit_car_form():
         entry.insert(0, value)
         entries.append(entry)
 
-    submit_button = tk.Button(add_car_window, text="Add Car", command=lambda: add_car(
-        entry_car_name.get(),
-        entry_car_location.get(),
-        entry_car_capacity.get(),
-        entry_car_fueltype.get(),
-        entry_car_transmission.get(),
-        entry_car_features.get(),
-        entry_car_price.get(),
-        entry_car_image.get(),
-        entry_car_color.get(),  # Add this line to get the color
-        entry_car_type.get(),  # Add this line to get the car type
-        add_car_window  # Pass the window to close it after success
+    # Add a save button to save the changes
+    submit_button = tk.Button(edit_car_window, text="Save Changes", command=lambda: edit_car(
+        car_data[0],  # CarID
+        entries[0].get(),  # CarName
+        entries[1].get(),  # CarLocation
+        entries[2].get(),  # CarCapacity
+        entries[3].get(),  # CarFuelType
+        entries[4].get(),  # CarTransmission
+        entries[5].get(),  # CarFeatures
+        entries[6].get(),  # CarPrice
+        entries[7].get(),  # CarImage
+        entries[8].get(),  # CarColour
+        entries[9].get(),  # CarType
+        edit_car_window   # Close the window after successful edit
     ))
+    submit_button.pack(pady=20)
 
 
 def edit_car(car_id, name, location, capacity, fueltype, transmission, features, price, image, color, car_type, window):
@@ -861,6 +868,7 @@ def edit_car(car_id, name, location, capacity, fueltype, transmission, features,
     window.destroy()
 
     messagebox.showinfo("Edit Car", "Car details updated successfully.")
+
 
 
 def display_booking_history():
@@ -1241,7 +1249,7 @@ button_pending_bookings = tk.Button(admin_frame, text="Pending Bookings", font="
 button_feedback = tk.Button(admin_frame, text="Customer Feedback", font="Poppins", command=open_feedback_page)
 button_manage_cars = tk.Button(admin_frame, text="Show Cars", font="Poppins", command=display_car_availability)
 button_agencies = tk.Button(admin_frame, text="Agencies", font="Poppins", command=display_agencies_frame)
-button_settings = tk.Button(admin_frame, text="Settings", font="Poppins", command=lambda: print("Settings"))
+
 
 logout_button = tk.Button(admin_frame, text="Logout", command=logout)
 logout_button.place(x=65, y=680, width=180, height=40)
