@@ -332,15 +332,15 @@ def open_payment_page(selected_bookings, total_price):
     global payment_window
     payment_window = tk.Toplevel(booking_window)
     payment_window.title("Checkout")
-    payment_window.geometry("1280x780")
+    payment_window.geometry("910x760")
 
     # Debugging: Inspect selected_bookings
     print("Selected bookings in payment page:", selected_bookings)
 
     # Background image setup
-    image_path = r"C:\Users\User\OneDrive\Pictures\Group 3.png"
+    image_path = r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-11-20 224726.png"
     bg_image = Image.open(image_path)
-    bg_image = bg_image.resize((1280, 780), Image.LANCZOS)
+    bg_image = bg_image.resize((910, 760), Image.LANCZOS)
     bg_photo = ImageTk.PhotoImage(bg_image)
 
     bg_label = tk.Label(payment_window, image=bg_photo)
@@ -351,12 +351,12 @@ def open_payment_page(selected_bookings, total_price):
         payment_window.destroy()
         booking_window.deiconify()
 
-    button_back = tk.Button(payment_window, text="Back", font=("Arial", 10), bg="#0a47a3", command=go_back)
-    button_back.place(x=900, y=125, width=90, height=40)
+    button_back = tk.Button(payment_window, text="Back to Booking", font=("Arial", 10,"bold"), bg="#1572D3",fg = "white", command=go_back)
+    button_back.place(x=690, y=115, width=160, height=30)
 
     # Booking Details Frame
     details_frame = tk.Frame(payment_window, bg="#FFFFFF", bd=2, relief=tk.GROOVE)
-    details_frame.place(x=280, y=280, width=420, height=280)
+    details_frame.place(x=103, y=275, width=455, height=289)
 
     # Generate booking details string
     booking_info = ""
@@ -391,22 +391,22 @@ def open_payment_page(selected_bookings, total_price):
     print(f"Total price passed to payment page: RM{total_price}")
     print("Selected bookings passed to payment page:", selected_bookings)
 
-    # Display total price
-    price_label = tk.Label(payment_window, text=f"Total Price: RM{total_price}", font=("Arial", 14, "bold"), bg="#F1F1F1")
-    price_label.place(x=770, y=500)
+    # price label
+    price_label = tk.Label(payment_window, text=f"Total Price: RM{total_price}", font=("Arial", 14, "bold"),bg="#FEFEFE")
+    price_label.place(x=593, y=500)
 
     # Payment Option Buttons
-    button_e_wallet = tk.Button(payment_window, text="E-Wallet", font=("Arial", 14), bg="#0a47a3", fg="white",
+    button_e_wallet = tk.Button(payment_window, text="E-Wallet", font=("Arial", 14), bg="#0F4EDE", fg="white",
                                 command=lambda: process_payment("E-Wallet"))
-    button_e_wallet.place(x=280, y=600, width=230, height=70)
+    button_e_wallet.place(x=120, y=590, width=230, height=70)
 
-    button_online_banking = tk.Button(payment_window, text="Online Banking", font=("Arial", 14), bg="#0a47a3",
+    button_online_banking = tk.Button(payment_window, text="Online Banking", font=("Arial", 14), bg="#0BDFDF",
                                       fg="white", command=lambda: process_payment("Online Banking"))
-    button_online_banking.place(x=525, y=600, width=230, height=70)
+    button_online_banking.place(x=335, y=590, width=230, height=70)
 
-    button_card = tk.Button(payment_window, text="Credit/Debit Card", font=("Arial", 14), bg="#0a47a3", fg="white",
+    button_card = tk.Button(payment_window, text="Credit/Debit Card", font=("Arial", 14), bg="#0CBDA8", fg="white",
                             command=lambda: process_payment("Credit/Debit Card"))
-    button_card.place(x=770, y=600, width=230, height=70)
+    button_card.place(x=560, y=590, width=230, height=70)
 
     def process_payment(payment_type, card_window=None):
         if not selected_bookings:
