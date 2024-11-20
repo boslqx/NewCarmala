@@ -48,7 +48,7 @@ def get_available_cars(location, pickup_date, return_date):
         if isinstance(return_date, str):
             return_date = datetime.strptime(return_date, "%Y-%m-%d").date()
 
-        # Improved query for filtering available cars
+        # SQL query to filter available cars
         cursor.execute('''
             SELECT c.CarID, c.CarName, c.CarLocation, c.CarCapacity, c.CarFueltype,
                    c.CarTransmission, c.CarFeatures, c.CarPrice, c.CarImage
@@ -56,10 +56,10 @@ def get_available_cars(location, pickup_date, return_date):
             LEFT JOIN Booking AS b ON c.CarID = b.CarID
             WHERE LOWER(c.CarLocation) = LOWER(?)
               AND (
-                  b.BookingID IS NULL OR
-                  NOT (b.PickupDate <= ? AND b.DropoffDate >= ?)
+                  b.BookingID IS NULL OR  -- No booking for this car
+                  NOT (b.PickupDate <= ? AND b.DropoffDate >= ?)  -- Booking overlaps with the requested dates
               )
-        ''', (location, return_date, pickup_date))  # Use return_date first, then pickup_date
+        ''', (location, return_date, pickup_date))  # Pass return_date first, then pickup_date for overlap check
 
         available_cars = cursor.fetchall()
         conn.close()
@@ -151,9 +151,6 @@ def fetch_car_data(capacity_filter=None, transmission_filter=None, features_filt
     # Construct the SQL query based on filters
     query = """
             SELECT * FROM CarList
-            WHERE CarID NOT IN ( 
-                SELECT CarID FROM Booking WHERE BookingStatus IN ('Pending', 'Approved')
-            )
         """
     params = []
 
