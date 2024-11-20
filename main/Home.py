@@ -172,6 +172,12 @@ def log_out():
     root.destroy()
     subprocess.Popen(["python", "Login.py"])
 
+
+import sqlite3
+from tkinter import messagebox
+import Session
+
+
 def submit_rating():
     # Get the selected rating, comment, and selected car
     rating = rating_var.get()  # Get the selected rating (1 to 5)
@@ -201,18 +207,25 @@ def submit_rating():
         conn = sqlite3.connect("Carmala.db")
         cursor = conn.cursor()
 
-        # Get the CarID from CarList based on the selected car
-        cursor.execute("SELECT CarID FROM CarList WHERE CarName = ?", (selected_car,))
-        car_id = cursor.fetchone()
+        # Get the CarID and AdminID from CarList and AdminAccount based on the selected car
+        cursor.execute("""
+            SELECT CarList.CarID, AdminAccount.AdminID
+            FROM CarList
+            INNER JOIN AdminAccount ON CarList.AdminID = AdminAccount.AdminID
+            WHERE CarList.CarName = ?
+        """, (selected_car,))
 
-        if not car_id:
-            raise ValueError("Selected car not found in the database.")
-        car_id = car_id[0]
+        result = cursor.fetchone()
 
-        # Insert the rating into the Rating table
+        if not result:
+            raise ValueError("Selected car not found in the database or no admin associated with the car.")
+
+        car_id, admin_id = result  # Unpack the results
+
+        # Insert the rating into the Rating table along with the adminID
         cursor.execute(
-            "INSERT INTO Rating (UserID, CarID, Stars, Comment) VALUES (?, ?, ?, ?)",
-            (user_id, car_id, rating, comment),
+            "INSERT INTO Rating (UserID, CarID, AdminID, Stars, Comment) VALUES (?, ?, ?, ?, ?)",
+            (user_id, car_id, admin_id, rating, comment),
         )
 
         conn.commit()
