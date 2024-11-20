@@ -62,6 +62,7 @@ def get_available_cars(location, pickup_date, return_date):
         ''', (location, return_date, pickup_date))  # Pass return_date first, then pickup_date for overlap check
 
         available_cars = cursor.fetchall()
+        print(f"Available cars: {available_cars}")
         conn.close()
         return available_cars
     except Exception as e:
@@ -93,6 +94,9 @@ def search_action():
                 filter_car_data()
         except Exception as e:
             messagebox.showerror("Error", f"Failed to open car list: {str(e)}")
+
+
+
 
 # Global list to store selected cars for booking
 booking_list = []
@@ -144,75 +148,123 @@ def create_car_card(parent, row, col, car_data):
     add_booklist_button.grid(row=row+4, column=col, pady=10)
 
 # Function to fetch car data from the database
-def fetch_car_data(capacity_filter=None, transmission_filter=None, features_filter=None, price_filter=None, colour_filter=None, car_type_filter=None):
+def fetch_car_data(capacity_filter=None, transmission_filter=None, features_filter=None, price_filter=None, colour_filter=None, car_type_filter=None, pickup_date=None, dropoff_date=None):
     connection = sqlite3.connect('Carmala.db')
     cursor = connection.cursor()
 
-    # Construct the SQL query based on filters
+    # Base query
     query = """
-            SELECT * FROM CarList
+            SELECT DISTINCT c.CarID, c.CarName, c.CarLocation, c.CarCapacity, c.CarFueltype,
+                            c.CarTransmission, c.CarFeatures, c.CarPrice, c.CarImage, c.AdminID, 
+                            c.CarColour, c.CarType
+            FROM CarList AS c
+            LEFT JOIN Booking AS b ON c.CarID = b.CarID
+            WHERE (
+                b.BookingID IS NULL OR  -- Include cars with no bookings
+                NOT (b.PickupDate <= ? AND b.DropoffDate >= ?)  -- Exclude cars with overlapping bookings
+            )
         """
+
     params = []
 
+    # Only add date filters if both pickup_date and dropoff_date are provided
+    if pickup_date and dropoff_date:
+        params.extend([dropoff_date, pickup_date])  # Order: dropoff_date, pickup_date
+    else:
+        # If dates are missing, adjust the query to remove date constraints
+        query = """
+                    SELECT DISTINCT c.CarID, c.CarName, c.CarLocation, c.CarCapacity, c.CarFueltype,
+                                    c.CarTransmission, c.CarFeatures, c.CarPrice, c.CarImage, c.AdminID, 
+                                    c.CarColour, c.CarType
+                    FROM CarList AS c
+                    LEFT JOIN Booking AS b ON c.CarID = b.CarID
+                    WHERE b.BookingID IS NULL OR NOT EXISTS (
+                        SELECT 1 FROM Booking AS b2 WHERE b2.CarID = c.CarID
+                    )
+                """
+
+    # Add additional filters based on dropdown selections
     if capacity_filter:
-        query += " AND CarCapacity = ?"
+        query += " AND c.CarCapacity = ?"
         params.append(capacity_filter)
 
     if transmission_filter:
-        query += " AND CarTransmission = ?"
+        query += " AND c.CarTransmission = ?"
         params.append(transmission_filter)
 
     if features_filter:
-        query += " AND CarFeatures LIKE ?"
+        query += " AND c.CarFeatures LIKE ?"
         params.append(f"%{features_filter}%")
 
     if price_filter:
-        if " ~ " in price_filter:
+        if " ~ " in price_filter:  # For ranges like "600 ~ 1000"
             min_price, max_price = map(int, price_filter.split(' ~ '))
-            query += " AND CarPrice BETWEEN ? AND ?"
+            query += " AND c.CarPrice BETWEEN ? AND ?"
             params.extend([min_price, max_price])
-        elif ">" in price_filter:
+        elif ">" in price_filter:  # For ">1000"
             min_price = int(price_filter.replace('>', '').strip())
-            query += " AND CarPrice >= ?"
+            query += " AND c.CarPrice > ?"
             params.append(min_price)
 
     if colour_filter:
-        query += " AND CarColour = ?"
+        query += " AND c.CarColour = ?"
         params.append(colour_filter)
 
     if car_type_filter:
-        query += " AND CarType = ?"
+        query += " AND c.CarType = ?"
         params.append(car_type_filter)
+
+    # Debug point: Print the query and parameters
+    print(f"fetch_car_data: Query - {query}")
+    print(f"fetch_car_data: Params - {params}")
 
     cursor.execute(query, params)
     car_list = cursor.fetchall()
 
+    # Debug point: Print the fetched car list
+    print(f"fetch_car_data: Result - {car_list}")
+
     connection.close()
     return car_list
+
+
 
 # Function to filter and display car data based on selected criteria
 def filter_car_data():
     global current_page
     current_page = 0  # Reset to the first page when new filter is applied
+    print("filter_car_data: Called display_cars")  # Debug point
     display_cars()
 
-# Function to display cars for the current page
+
 # Update the display_cars function to handle the Colour filter
-def display_cars():
-    global current_page
-    # Get selected filter values
-    capacity_value = capacity_dropdown.get()
-    transmission_value = transmission_dropdown.get()
-    features_value = features_dropdown.get()
-    price_value = price_dropdown.get()
-    colour_value = colour_dropdown.get()
-    car_type_value = car_type_dropdown.get()
+def display_cars(filtered_cars=None):
+    global current_page, available_cars
 
-    # Convert capacity to a numeric value
-    capacity_filter = capacity_value.split()[0] if capacity_value else None
+    if filtered_cars is None:
+        # Get the pickup and dropoff dates from the date entry widgets
+        pickup_date = pickup_date_entry.get_date().strftime('%Y-%m-%d') if pickup_date_entry.get_date() else None
+        dropoff_date = return_date_entry.get_date().strftime('%Y-%m-%d') if return_date_entry.get_date() else None
 
-    # Fetch filtered car data
-    filtered_cars = fetch_car_data(capacity_filter, transmission_value, features_value, price_value, colour_value, car_type_value)
+        # Get selected filter values
+        capacity_value = capacity_dropdown.get()
+        transmission_value = transmission_dropdown.get()
+        features_value = features_dropdown.get()
+        price_value = price_dropdown.get()
+        colour_value = colour_dropdown.get()
+        car_type_value = car_type_dropdown.get()
+
+        # Convert capacity to a numeric value
+        capacity_filter = capacity_value.split()[0] if capacity_value else None
+
+        # Fetch filtered car data
+        filtered_cars = fetch_car_data(
+            capacity_filter, transmission_value, features_value, price_value, colour_value, car_type_value,
+            pickup_date, dropoff_date
+        )
+
+    # Debug point: Print the received filtered cars
+    print(f"display_cars: Filtered cars received - {filtered_cars}")
 
     # Clear current car display
     for widget in car_frame.winfo_children():
@@ -223,12 +275,17 @@ def display_cars():
     end_index = start_index + cars_per_page
     cars_on_page = filtered_cars[start_index:end_index]
 
+    # Debug point: Print the cars being displayed
+    print(f"display_cars: Cars on page - {cars_on_page}")
+
     # Display cars for the current page
     for index, car_data in enumerate(cars_on_page):
         create_car_card(car_frame, (index // 4) * 5, index % 4, car_data)
 
     # Update page navigation buttons
     update_page_buttons(len(filtered_cars))
+
+
 
 # Function to update the state of page navigation buttons
 def update_page_buttons(total_cars):
