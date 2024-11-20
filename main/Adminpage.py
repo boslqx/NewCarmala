@@ -568,38 +568,38 @@ def display_agencies_frame():
 
 
 def delete_selected_row():
-        # Get selected item from Treeview
-        selected_item = car_tree.selection()
+    # Get selected item from Treeview
+    selected_item = car_tree.selection()
 
-        if not selected_item:
-            messagebox.showwarning("No Selection", "Please select a row to delete.")
-            return
+    if not selected_item:
+        messagebox.showwarning("No Selection", "Please select a row to delete.")
+        return
 
-        # Get the car_id (or the primary key) from the selected row
-        selected_car = car_tree.item(selected_item)['values']  # Get the values from the selected row
-        car_id = selected_car[0]  # Assuming the car_id is the first column
+    # Get the car_id (or the primary key) from the selected row
+    selected_car = car_tree.item(selected_item)['values']  # Get the values from the selected row
+    car_id = selected_car[0]  # Assuming the car_id is the first column
 
-        # Confirm the deletion
-        confirm = messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete Car ID {car_id}?")
-        if confirm:
-            try:
-                # Delete from the database
-                conn = sqlite3.connect(R"C:\Users\User\Downloads\Carmala\main\Carmala.db")
-                cursor = conn.cursor()
-                cursor.execute("DELETE FROM CarList WHERE CarID=?",
-                               (CarID,))  # Adjust if your primary key has a different name
-                conn.commit()
-                conn.close()
+    # Confirm the deletion
+    confirm = messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete Car ID {car_id}?")
+    if confirm:
+        try:
+            # Delete from the database
+            conn = sqlite3.connect(R"C:\Users\User\Downloads\Carmala\main\Carmala.db")  # Replace with your actual DB path
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM CarList WHERE CarID=?", (car_id,))  # Corrected the variable name to car_id
+            conn.commit()
+            conn.close()
 
-                # Delete the row from the Treeview
-                car_tree.delete(selected_item)
+            # Delete the row from the Treeview
+            car_tree.delete(selected_item)
 
-                messagebox.showinfo("Success", f"Car ID {car_id} has been deleted successfully.")
+            messagebox.showinfo("Success", f"Car ID {car_id} has been deleted successfully.")
 
-            except sqlite3.Error as e:
-                messagebox.showerror("Error", f"An error occurred: {e}")
-        else:
-            messagebox.showinfo("Cancelled", "Deletion cancelled.")
+        except sqlite3.Error as e:
+            messagebox.showerror("Error", f"An error occurred: {e}")
+    else:
+        messagebox.showinfo("Cancelled", "Deletion cancelled.")
+
 def delete_selected_agency():
     # Get selected item from Treeview
     selected_item = agency_tree.selection()
@@ -686,47 +686,70 @@ def add_new_agency(AdminID, AdminUsername, AdminPassword, AdminEmail, add_window
 
 
 def open_add_car_form():
-    # Create a new window for adding car details
+    # Create a new window for adding a car
     add_car_window = tk.Toplevel(root)
     add_car_window.title("Add New Car")
-    add_car_window.geometry("600x600")
+    add_car_window.geometry("600x900")
 
     # Create form labels and entry fields for car details
     tk.Label(add_car_window, text="Car Name:").pack(pady=5)
-    entry_car_name = tk.Entry(add_car_window)
+    entry_car_name = tk.Entry(add_car_window, width=40)
     entry_car_name.pack(pady=5)
 
     tk.Label(add_car_window, text="Car Location:").pack(pady=5)
-    entry_car_location = tk.Entry(add_car_window)
+    entry_car_location = tk.Entry(add_car_window, width=40)
     entry_car_location.pack(pady=5)
 
     tk.Label(add_car_window, text="Car Capacity:").pack(pady=5)
-    entry_car_capacity = tk.Entry(add_car_window)
+    entry_car_capacity = tk.Entry(add_car_window, width=40)
     entry_car_capacity.pack(pady=5)
 
     tk.Label(add_car_window, text="Car Fuel Type:").pack(pady=5)
-    entry_car_fueltype = tk.Entry(add_car_window)
+    entry_car_fueltype = tk.Entry(add_car_window, width=40)
     entry_car_fueltype.pack(pady=5)
 
     tk.Label(add_car_window, text="Car Transmission:").pack(pady=5)
-    entry_car_transmission = tk.Entry(add_car_window)
+    entry_car_transmission = tk.Entry(add_car_window, width=40)
     entry_car_transmission.pack(pady=5)
 
     tk.Label(add_car_window, text="Car Features:").pack(pady=5)
-    entry_car_features = tk.Entry(add_car_window)
+    entry_car_features = tk.Entry(add_car_window, width=40)
     entry_car_features.pack(pady=5)
 
     tk.Label(add_car_window, text="Car Price:").pack(pady=5)
-    entry_car_price = tk.Entry(add_car_window)
+    entry_car_price = tk.Entry(add_car_window, width=40)
     entry_car_price.pack(pady=5)
 
     tk.Label(add_car_window, text="Car Image URL:").pack(pady=5)
-    entry_car_image = tk.Entry(add_car_window)
+    entry_car_image = tk.Entry(add_car_window, width=40)
     entry_car_image.pack(pady=5)
 
-    # Submit button to add car
-    submit_button = tk.Button(add_car_window, text="Add Car", command=lambda: add_car(entry_car_name.get(),entry_car_location.get(),entry_car_capacity.get(), entry_car_fueltype.get(),entry_car_transmission.get(),entry_car_features.get(),entry_car_price.get(),entry_car_image.get(),add_car_window))
+    # Add Car Colour field
+    tk.Label(add_car_window, text="Car Colour:").pack(pady=5)
+    entry_car_color = tk.Entry(add_car_window, width=40)
+    entry_car_color.pack(pady=5)
+
+    # Add Car Type field
+    tk.Label(add_car_window, text="Car Type:").pack(pady=5)
+    entry_car_type = tk.Entry(add_car_window, width=40)
+    entry_car_type.pack(pady=5)
+
+    # Submit button to add the car
+    submit_button = tk.Button(add_car_window, text="Add Car", command=lambda: add_car(
+        entry_car_name.get(),
+        entry_car_location.get(),
+        entry_car_capacity.get(),
+        entry_car_fueltype.get(),
+        entry_car_transmission.get(),
+        entry_car_features.get(),
+        entry_car_price.get(),
+        entry_car_image.get(),
+        entry_car_color.get(),   # Pass the CarColour field value
+        entry_car_type.get(),    # Pass the CarType field value
+        add_car_window           # Pass the window to close it after success
+    ))
     submit_button.pack(pady=20)
+
 
 def logout():
     """Logout the admin and clear the session."""
@@ -737,7 +760,7 @@ def logout():
 
 
 
-def add_car(name, location, capacity, fueltype, transmission, features, price, image_url, window):
+def add_car(name, location, capacity, fueltype, transmission, features, price, image_url, car_color, car_type, window):
     admin_session = get_admin_session()
     if not admin_session:
         messagebox.showerror("Error", "You must be logged in as an admin to add cars.")
@@ -749,11 +772,11 @@ def add_car(name, location, capacity, fueltype, transmission, features, price, i
         conn = sqlite3.connect("Carmala.db")
         cursor = conn.cursor()
 
-        # Insert new car with AdminID
+        # Insert new car with AdminID, CarColour, and CarType
         cursor.execute("""
-            INSERT INTO CarList (CarName, CarLocation, CarCapacity, CarFueltype, CarTransmission, CarFeatures, CarPrice, CarImage, AdminID)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (name, location, capacity, fueltype, transmission, features, price, image_url, admin_id))
+            INSERT INTO CarList (CarName, CarLocation, CarCapacity, CarFueltype, CarTransmission, CarFeatures, CarPrice, CarImage, CarColour, CarType, AdminID)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (name, location, capacity, fueltype, transmission, features, price, image_url, car_color, car_type, admin_id))
 
         conn.commit()
         window.destroy()  # Close the add car window
@@ -783,75 +806,50 @@ def open_edit_car_form():
     # Create a new window for editing car details
     edit_car_window = tk.Toplevel(root)
     edit_car_window.title("Edit Car")
-    edit_car_window.geometry("600x600")
+    edit_car_window.geometry("600x700")
 
     # Create form labels and entry fields pre-filled with the selected car data
-    tk.Label(edit_car_window, text="Car Name:").pack(pady=5)
-    entry_car_name = tk.Entry(edit_car_window, width=40)
-    entry_car_name.pack(pady=5)
-    entry_car_name.insert(0, car_data[1])
+    fields = [
+        ("Car Name", car_data[1]), ("Car Location", car_data[2]), ("Car Capacity", car_data[3]),
+        ("Car Fuel Type", car_data[4]), ("Car Transmission", car_data[5]), ("Car Features", car_data[6]),
+        ("Car Price", car_data[7]), ("Car Image URL", car_data[8]), ("Car Colour", car_data[9]), ("Car Type", car_data[10])
+    ]
 
-    tk.Label(edit_car_window, text="Car Location:").pack(pady=5)
-    entry_car_location = tk.Entry(edit_car_window, width=40)
-    entry_car_location.pack(pady=5)
-    entry_car_location.insert(0, car_data[2])
+    entries = []
+    for label, value in fields:
+        tk.Label(edit_car_window, text=f"{label}:").pack(pady=5)
+        entry = tk.Entry(edit_car_window, width=40)
+        entry.pack(pady=5)
+        entry.insert(0, value)
+        entries.append(entry)
 
-    tk.Label(edit_car_window, text="Car Capacity:").pack(pady=5)
-    entry_car_capacity = tk.Entry(edit_car_window, width=40)
-    entry_car_capacity.pack(pady=5)
-    entry_car_capacity.insert(0, car_data[3])
-
-    tk.Label(edit_car_window, text="Car Fuel Type:").pack(pady=5)
-    entry_car_fueltype = tk.Entry(edit_car_window, width=40)
-    entry_car_fueltype.pack(pady=5)
-    entry_car_fueltype.insert(0, car_data[4])
-
-    tk.Label(edit_car_window, text="Car Transmission:").pack(pady=5)
-    entry_car_transmission = tk.Entry(edit_car_window, width=40)
-    entry_car_transmission.pack(pady=5)
-    entry_car_transmission.insert(0, car_data[5])
-
-    tk.Label(edit_car_window, text="Car Features:").pack(pady=5)
-    entry_car_features = tk.Entry(edit_car_window, width=40)
-    entry_car_features.pack(pady=5)
-    entry_car_features.insert(0, car_data[6])
-
-    tk.Label(edit_car_window, text="Car Price:").pack(pady=5)
-    entry_car_price = tk.Entry(edit_car_window, width=40)
-    entry_car_price.pack(pady=5)
-    entry_car_price.insert(0, car_data[7])
-
-    tk.Label(edit_car_window, text="Car Image URL:").pack(pady=5)
-    entry_car_image = tk.Entry(edit_car_window, width=40)
-    entry_car_image.pack(pady=5)
-    entry_car_image.insert(0, car_data[8])
-
-    # Submit button to update car details
-    submit_button = tk.Button(edit_car_window, text="Save Changes", command=lambda: edit_car(car_data[0], # car_id
-                                                                                             entry_car_name.get(),
-                                                                                             entry_car_location.get(),
-                                                                                             entry_car_capacity.get(),
-                                                                                             entry_car_fueltype.get(),
-                                                                                             entry_car_transmission.get(),
-                                                                                             entry_car_features.get(),
-                                                                                             entry_car_price.get(),
-                                                                                             entry_car_image.get(),
-                                                                                             edit_car_window))
-    submit_button.pack(pady=20)
+    submit_button = tk.Button(add_car_window, text="Add Car", command=lambda: add_car(
+        entry_car_name.get(),
+        entry_car_location.get(),
+        entry_car_capacity.get(),
+        entry_car_fueltype.get(),
+        entry_car_transmission.get(),
+        entry_car_features.get(),
+        entry_car_price.get(),
+        entry_car_image.get(),
+        entry_car_color.get(),  # Add this line to get the color
+        entry_car_type.get(),  # Add this line to get the car type
+        add_car_window  # Pass the window to close it after success
+    ))
 
 
-def edit_car(car_id, name, location, capacity, fueltype, transmission, features, price, image, window):
+def edit_car(car_id, name, location, capacity, fueltype, transmission, features, price, image, color, car_type, window):
     # Update the car details in the database
-    conn = sqlite3.connect(R"C:\Users\User\Downloads\Carmala\main\Carmala.db")  # Replace with your actual DB path
+    conn = sqlite3.connect("Carmala.db")  # Replace with your actual DB path
     cursor = conn.cursor()
 
     # Execute update query
     cursor.execute("""
         UPDATE CarList SET 
         CarName = ?, CarLocation = ?, CarCapacity = ?, CarFueltype = ?, CarTransmission = ?, 
-        CarFeatures = ?,CarPrice = ?,CarImage = ?
-        WHERE CarID= ?
-    """, (name, location, capacity, fueltype, transmission, features, price, image, car_id))
+        CarFeatures = ?, CarPrice = ?, CarImage = ?, CarColour = ?, CarType = ?
+        WHERE CarID = ?
+    """, (name, location, capacity, fueltype, transmission, features, price, image, color, car_type, car_id))
 
     conn.commit()
     conn.close()
@@ -863,6 +861,7 @@ def edit_car(car_id, name, location, capacity, fueltype, transmission, features,
     window.destroy()
 
     messagebox.showinfo("Edit Car", "Car details updated successfully.")
+
 
 def display_booking_history():
     # Retrieve the logged-in admin's session data
