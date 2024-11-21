@@ -15,59 +15,62 @@ import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import pandas as pd
-from AdminSession import get_admin_session, set_admin_session
+import Session
 
 
-# Global variable to store the session file path
-SESSION_FILE = "AdminSession.json"
+ADMIN_SESSION_FILE = "AdminSession.json"
+# Function to retrieve admin session and show admin details
+def get_logged_in_admin():
+    admin_session = Session.get_admin_session()
+    if admin_session:
+        admin_id = admin_session["admin_id"]
+        admin_username = admin_session["username"]
+        print(f"Admin ID: {admin_id}, Username: {admin_username}")  # Debugging print
+        return admin_id, admin_username
+    print("No admin is logged in.")
+    return None, None  # If no session exists
 
-def open_admin_page():
-    logged_in_admin = get_admin_session()
-    if logged_in_admin:
-        print(f"Welcome, {logged_in_admin['username']} (Admin ID: {logged_in_admin['admin_id']})")
-        # Proceed to the admin page
-        admin_panel_setup()
-    else:
-        messagebox.showerror("Access Denied", "Please log in to access the admin panel.")
+def get_admin_session():
+    """Retrieve the admin session data from the JSON file."""
+    if os.path.exists(ADMIN_SESSION_FILE):
+        try:
+            with open(ADMIN_SESSION_FILE, "r") as file:
+                session_data = json.load(file)
+                print("[DEBUG] Admin session loaded:", session_data)
+                return session_data
+        except json.JSONDecodeError:
+            print("[ERROR] Session file is corrupted.")
+    print("[DEBUG] No session file found.")
+    return None
+# Function to clear the admin session
+def clear_admin_session():
+    """Delete the admin session file."""
+    if os.path.exists(ADMIN_SESSION_FILE):
+        os.remove(ADMIN_SESSION_FILE)
+        print("[DEBUG] Admin session cleared.")
 
+def open_admin_page(admin_data):
+    global CURRENT_ADMIN
+    CURRENT_ADMIN = admin_data  # Store admin data globally
+    print(f"Admin page opened for: {CURRENT_ADMIN['username']} (Admin ID: {CURRENT_ADMIN['admin_id']})")
+    # Proceed to display the admin panel
+    open_admin_panel()
+logged_in_admin = get_admin_session()
 
+if logged_in_admin:
+    admin_id = logged_in_admin.get("admin_id")
+    print(f"[DEBUG] Logged in Admin ID: {admin_id}")
+else:
+    messagebox.showerror("Access Denied", "No admin session found. Please log in again.")
+    os.system("python Login.py")  # Redirect to login page
+    exit()
 
-# Example function to display admin information
 def show_admin_info():
-    logged_in_admin = get_admin_session()
-
     if logged_in_admin:
         print(f"Logged in as: {logged_in_admin['username']}, Admin ID: {logged_in_admin['admin_id']}")
     else:
         print("No admin is currently logged in.")
 
-
-
-
-ADMIN_SESSION_FILE = r"C:\Users\User\admin_session.json"
-
-def set_admin_session(admin_data):
-    try:
-        print("Writing session data:", admin_data)  # Debugging print
-        with open(ADMIN_SESSION_FILE, "w") as file:
-            json.dump(admin_data, file)
-        print(f"Session data written to {ADMIN_SESSION_FILE}.")
-    except Exception as e:
-        print(f"Error writing session data: {e}")
-
-
-# Function to get user session (retrieve from session.json)
-def get_user_session():
-    if os.path.exists(SESSION_FILE):
-        with open(SESSION_FILE, "r") as file:
-            return json.load(file)
-    return None  # If the file does not exist, no user is logged in
-
-# Function to clear user session (delete session.json)
-def clear_user_session():
-    if os.path.exists(SESSION_FILE):
-        os.remove(SESSION_FILE)
-        print("Session cleared.")
 
 
 def open_admin_panel():
@@ -79,7 +82,7 @@ def open_admin_panel():
     right_frame.pack_forget()
 
     # Load and set admin-specific image background
-    admin_image_path = r"C:\Users\User\Downloads\Group 4.png"  # Add your path
+    admin_image_path = r"C:\Users\User\Downloads\Group 5.png"  # Add your path
     admin_image = Image.open(admin_image_path)
     admin_image = admin_image.resize((1280, 780), Image.LANCZOS)
     admin_photo = ImageTk.PhotoImage(admin_image)
@@ -94,53 +97,56 @@ def open_admin_panel():
     display_revenue_chart()
     display_car_usage_pie_chart()
 
-def check_session():
-    admin_session = get_admin_session()
-    print("Session data:", admin_session)
-    if admin_session:
-        print(f"Logged in as Admin ID {admin_session['admin_id']} ({admin_session['username']})")
-    else:
-        print("No admin logged in.")
-
 # Function to place buttons in the admin panel
 def place_buttons_on_image():
     # Side panel buttons
-    button_statistics.place(x=65, y=155, width=180, height=40)
     button_pending_bookings.place(x=65, y=205, width=180, height=40)
     button_feedback.place(x=65, y=255, width=180, height=40)
     button_manage_cars.place(x=65, y=305, width=180, height=40)
     button_agencies.place(x=65, y=355, width=180, height=40)
-    button_settings.place(x=65, y=405, width=180, height=40)
 
-# Function to get statistics data
+
 def get_statistics_data():
     try:
+        # Retrieve the logged-in admin's session data
+        admin_session = Session.get_admin_session()
+        if not admin_session or "admin_id" not in admin_session:
+            messagebox.showerror("Error", "You must be logged in as an admin to view statistics.")
+            return 0, 0, 0
+
+        admin_id = admin_session["admin_id"]
+        is_superadmin = admin_session.get("SuperAdmin", False)  # Check if the admin is a SuperAdmin
+
         # Connect to the database
-        conn = sqlite3.connect(R"C:\Users\User\Downloads\Carmala\main\Carmala.db")
+        conn = sqlite3.connect("Carmala.db")
         cursor = conn.cursor()
 
-        # Query to get the total number of bookings
-        cursor.execute("SELECT COUNT(*) FROM Booking")
+        # Conditional filtering for SuperAdmin
+        if is_superadmin:
+            cursor.execute("SELECT COUNT(*) FROM Booking")
+        else:
+            cursor.execute("SELECT COUNT(*) FROM Booking WHERE AdminID = ?", (admin_id,))
         total = cursor.fetchone()[0]
 
-        # Query to get the number of approved bookings
-        cursor.execute("SELECT COUNT(*) FROM Booking WHERE BookingStatus = 'Approved'")
+        if is_superadmin:
+            cursor.execute("SELECT COUNT(*) FROM Booking WHERE BookingStatus = 'Approved'")
+        else:
+            cursor.execute("SELECT COUNT(*) FROM Booking WHERE BookingStatus = 'Approved' AND AdminID = ?", (admin_id,))
         approved = cursor.fetchone()[0]
 
-        # Query to get the number of rejected bookings
-        cursor.execute("SELECT COUNT(*) FROM Booking WHERE BookingStatus = 'Rejected'")
+        if is_superadmin:
+            cursor.execute("SELECT COUNT(*) FROM Booking WHERE BookingStatus = 'Rejected'")
+        else:
+            cursor.execute("SELECT COUNT(*) FROM Booking WHERE BookingStatus = 'Rejected' AND AdminID = ?", (admin_id,))
         rejected = cursor.fetchone()[0]
 
-        # Close the connection
         conn.close()
-
         return total, approved, rejected
 
     except sqlite3.Error as e:
         messagebox.showerror("Database Error", f"An error occurred while fetching statistics data: {e}")
         return 0, 0, 0
 
-# Function to display statistics chart on the right side of the admin panel
 def display_statistics_chart():
     total, approved, rejected = get_statistics_data()
 
@@ -198,36 +204,52 @@ def display_statistics():
     rejected_label = tk.Label(statistics_frame, text=f"Rejected Bookings: {rejected}", font=("Arial", 12), bg="#F1F1F1")
     rejected_label.pack(pady=5)
 
-# Function to get revenue statistics data
 def get_revenue_statistics():
     try:
+        # Retrieve the logged-in admin's session data
+        admin_session = Session.get_admin_session()
+        if not admin_session or "admin_id" not in admin_session:
+            messagebox.showerror("Error", "You must be logged in as an admin to view revenue statistics.")
+            return 0, []
+
+        admin_id = admin_session["admin_id"]
+        is_superadmin = admin_session.get("SuperAdmin", False)  # Check if the admin is a SuperAdmin
+
         # Connect to the database
-        conn = sqlite3.connect(R"C:\Users\User\Downloads\Carmala\main\Carmala.db")
+        conn = sqlite3.connect("Carmala.db")
         cursor = conn.cursor()
 
-        # Query to calculate the total revenue
-        cursor.execute("SELECT SUM(amount) FROM PaymentTable")
+        # Conditional filtering for SuperAdmin
+        if is_superadmin:
+            cursor.execute("SELECT SUM(amount) FROM PaymentTable")
+        else:
+            cursor.execute("SELECT SUM(amount) FROM PaymentTable WHERE AdminID = ?", (admin_id,))
         total_revenue = cursor.fetchone()[0] or 0  # Default to 0 if no data
 
-        # Query to calculate revenue for specific periods (e.g., monthly)
-        cursor.execute("""
-            SELECT strftime('%Y-%m', Date) as Month, SUM(amount)
-            FROM PaymentTable
-            GROUP BY Month
-            ORDER BY Month
-        """)
+        if is_superadmin:
+            cursor.execute("""
+                SELECT strftime('%Y-%m', Date) as Month, SUM(amount)
+                FROM PaymentTable
+                GROUP BY Month
+                ORDER BY Month
+            """)
+        else:
+            cursor.execute("""
+                SELECT strftime('%Y-%m', Date) as Month, SUM(amount)
+                FROM PaymentTable
+                WHERE AdminID = ?
+                GROUP BY Month
+                ORDER BY Month
+            """, (admin_id,))
         monthly_revenue = cursor.fetchall()
 
-        # Close the connection
         conn.close()
-
         return total_revenue, monthly_revenue
 
     except sqlite3.Error as e:
         messagebox.showerror("Database Error", f"An error occurred while fetching revenue data: {e}")
         return 0, []
 
-# Function to display the revenue statistics chart
 def display_revenue_chart():
     total_revenue, monthly_revenue = get_revenue_statistics()
 
@@ -358,30 +380,46 @@ def display_pie_chart(data, labels, title, x, y, width=400, height=300):
     # Embed the chart in the Tkinter admin panel
     canvas = FigureCanvasTkAgg(fig, master=admin_frame)
     canvas.draw()
-    canvas.get_tk_widget().place(x=300, y=500, width=900, height=height)
+    canvas.get_tk_widget().place(x=300, y=500, width=800, height=height)
 
 
 
 
 def get_car_usage_data():
-    """
-    Fetches car usage data by counting the number of bookings for each car.
-
-    :return: A tuple containing two lists: (labels, data)
-    """
     try:
-        conn = sqlite3.connect(r"C:\Users\User\Downloads\Carmala\main\Carmala.db")
+        # Retrieve the logged-in admin's session data
+        admin_session = Session.get_admin_session()
+        if not admin_session or "admin_id" not in admin_session:
+            messagebox.showerror("Error", "You must be logged in as an admin to view car usage data.")
+            return [], []
+
+        admin_id = admin_session["admin_id"]
+        is_superadmin = admin_session.get("SuperAdmin", False)  # Check if the admin is a SuperAdmin
+
+        # Connect to the database
+        conn = sqlite3.connect("carmala.db")
         cursor = conn.cursor()
 
-        # SQL query to join Booking and CarList tables
-        query = """
-            SELECT CarList.CarName, COUNT(Booking.CarID) AS UsageCount
-            FROM Booking
-            INNER JOIN CarList ON Booking.CarID = CarList.CarID
-            GROUP BY CarList.CarName
-            ORDER BY UsageCount DESC
-        """
-        cursor.execute(query)
+        # Conditional filtering for SuperAdmin
+        if is_superadmin:
+            query = """
+                SELECT CarList.CarName, COUNT(Booking.CarID) AS UsageCount
+                FROM Booking
+                INNER JOIN CarList ON Booking.CarID = CarList.CarID
+                GROUP BY CarList.CarName
+                ORDER BY UsageCount DESC
+            """
+            cursor.execute(query)
+        else:
+            query = """
+                SELECT CarList.CarName, COUNT(Booking.CarID) AS UsageCount
+                FROM Booking
+                INNER JOIN CarList ON Booking.CarID = CarList.CarID
+                WHERE CarList.AdminID = ?
+                GROUP BY CarList.CarName
+                ORDER BY UsageCount DESC
+            """
+            cursor.execute(query, (admin_id,))
         result = cursor.fetchall()
         conn.close()
 
@@ -394,18 +432,6 @@ def get_car_usage_data():
     except sqlite3.Error as e:
         messagebox.showerror("Database Error", f"Error fetching car usage data: {e}")
         return [], []
-
-
-        # Separate labels (car names) and data (number of bookings)
-        labels = [row[0] for row in results]
-        data = [row[1] for row in results]
-
-        return labels, data
-
-    except sqlite3.Error as e:
-        messagebox.showerror("Database Error", f"An error occurred while fetching car usage data: {e}")
-        return [], []
-
 
 def display_car_usage_pie_chart():
     """
@@ -423,31 +449,40 @@ def display_car_usage_pie_chart():
 
 
 def display_car_availability():
-    admin_session = get_admin_session()
-    if not admin_session:
-        messagebox.showerror("Error", "You must be logged in as an admin to view cars.")
+    # Retrieve the logged-in admin's session data
+    admin_session = Session.get_admin_session()
+
+    if not admin_session or "admin_id" not in admin_session:
+        messagebox.showerror("Error", "You must be logged in as an admin to view car availability.")
         return
 
+    # Debugging output
+    print(f"[DEBUG] Admin session loaded in adminpage: {admin_session}")
+
+    # Retrieve Admin ID and SuperAdmin status from session
     admin_id = admin_session["admin_id"]  # Retrieve AdminID from session
-    print(f"Admin ID from session: {admin_id}")  # Debugging print
+    is_superadmin = admin_session.get("SuperAdmin", False)  # Check if the admin is a SuperAdmin
+    print(f"[DEBUG] Displaying cars for Admin ID: {admin_id} (SuperAdmin: {is_superadmin})")  # Debugging print
 
-    car_availability_frame.pack(fill=tk.BOTH, expand=True)  # Show the car availability frame
-    admin_frame.pack_forget()  # Hide admin panel
+    # Show the car availability frame and hide the admin panel
+    car_availability_frame.pack(fill=tk.BOTH, expand=True)
+    admin_frame.pack_forget()
 
-    # Clear previous entries
+    # Clear previous entries in the treeview
     for row in car_tree.get_children():
         car_tree.delete(row)
 
     try:
+        # Connect to the database and fetch cars associated with the AdminID
         conn = sqlite3.connect("Carmala.db")  # Replace with your actual DB path
         cursor = conn.cursor()
 
-        # Query to fetch cars associated with the AdminID
         cursor.execute("""
             SELECT * FROM CarList WHERE AdminID = ?
         """, (admin_id,))
         rows = cursor.fetchall()
 
+        # Insert fetched data into the treeview
         if rows:
             for row in rows:
                 car_tree.insert("", tk.END, values=row)
@@ -459,8 +494,56 @@ def display_car_availability():
     except sqlite3.Error as e:
         messagebox.showerror("Database Error", f"An error occurred: {e}")
 
+    # Show the car availability frame and hide the admin panel
+    car_availability_frame.pack(fill=tk.BOTH, expand=True)
+    admin_frame.pack_forget()
+
+    # Clear previous entries in the treeview
+    for row in car_tree.get_children():
+        car_tree.delete(row)
+
+    try:
+        conn = sqlite3.connect("Carmala.db")  # Replace with your actual DB path
+        cursor = conn.cursor()
+
+        if is_superadmin:
+            # Fetch all cars for SuperAdmin
+            cursor.execute("SELECT * FROM CarList")
+        else:
+            # Fetch cars associated with the logged-in AdminID
+            cursor.execute("SELECT * FROM CarList WHERE AdminID = ?", (admin_id,))
+
+        rows = cursor.fetchall()
+
+        # Insert fetched data into the treeview
+        if rows:
+            for row in rows:
+                car_tree.insert("", tk.END, values=row)
+        else:
+            print(f"No cars found for Admin ID: {admin_id}.")  # Debugging
+
+        conn.close()
+
+    except sqlite3.Error as e:
+        messagebox.showerror("Database Error", f"An error occurred: {e}")
+
 
 def display_agencies_frame():
+    # Retrieve the logged-in admin's session data
+    admin_session = Session.get_admin_session()
+    if not admin_session or "SuperAdmin" not in admin_session:
+        messagebox.showerror("Access Denied", "You must be logged in as a SuperAdmin to manage agencies.")
+        return
+
+    is_superadmin = admin_session.get("SuperAdmin", False)  # Check if the admin is a SuperAdmin
+
+    if not is_superadmin:
+        messagebox.showerror("Access Denied", "Only SuperAdmin can manage agencies.")
+        return
+
+    # Proceed to display the agencies frame for SuperAdmin
+    print(f"Access granted to SuperAdmin: {admin_session['username']}")  # Debugging print
+
     admin_frame.pack_forget()  # Hide admin panel
     agencies_frame.pack(fill=tk.BOTH, expand=True)  # Show the agencies frame
 
@@ -469,7 +552,7 @@ def display_agencies_frame():
         agency_tree.delete(row)
 
     # Fetch data from the database
-    conn = sqlite3.connect(R"C:\Users\User\Downloads\Carmala\main\Carmala.db")  # Replace with your actual DB path
+    conn = sqlite3.connect("Carmala.db")  # Replace with your actual DB path
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM AdminAccount")  # Adjust the query to match your table structure
     rows = cursor.fetchall()
@@ -480,39 +563,44 @@ def display_agencies_frame():
 
     conn.close()
 
+
 def delete_selected_row():
-        # Get selected item from Treeview
-        selected_item = car_tree.selection()
+    # Get selected item from Treeview
+    selected_item = car_tree.selection()
 
-        if not selected_item:
-            messagebox.showwarning("No Selection", "Please select a row to delete.")
-            return
+    if not selected_item:
+        messagebox.showwarning("No Selection", "Please select a row to delete.")
+        return
 
-        # Get the car_id (or the primary key) from the selected row
-        selected_car = car_tree.item(selected_item)['values']  # Get the values from the selected row
-        car_id = selected_car[0]  # Assuming the car_id is the first column
+    # Get the car_id (or the primary key) from the selected row
+    selected_car = car_tree.item(selected_item)['values']  # Get the values from the selected row
+    car_id = selected_car[0]  # Assuming the car_id is the first column
 
-        # Confirm the deletion
-        confirm = messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete Car ID {car_id}?")
-        if confirm:
-            try:
-                # Delete from the database
-                conn = sqlite3.connect(R"C:\Users\User\Downloads\Carmala\main\Carmala.db")
-                cursor = conn.cursor()
-                cursor.execute("DELETE FROM CarList WHERE CarID=?",
-                               (CarID,))  # Adjust if your primary key has a different name
-                conn.commit()
-                conn.close()
+    # Confirm the deletion
+    confirm = messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete Car ID {car_id}?")
+    if confirm:
+        try:
+            # Delete from the database
+            conn = sqlite3.connect("Carmala.db")  # Replace with your actual DB path
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM CarList WHERE CarID=?", (car_id,))  # Corrected the variable name to car_id
+            conn.commit()  # Ensure changes are committed to the database
+            conn.close()  # Always close the connection
 
-                # Delete the row from the Treeview
-                car_tree.delete(selected_item)
+            # Now that the car has been deleted from the database, remove it from the Treeview
+            car_tree.delete(selected_item)
 
-                messagebox.showinfo("Success", f"Car ID {car_id} has been deleted successfully.")
+            # Refresh the car availability list to reflect the deletion
+            display_car_availability()  # This function will re-query the database and update the Treeview
 
-            except sqlite3.Error as e:
-                messagebox.showerror("Error", f"An error occurred: {e}")
-        else:
-            messagebox.showinfo("Cancelled", "Deletion cancelled.")
+            messagebox.showinfo("Success", f"Car ID {car_id} has been deleted successfully.")
+
+        except sqlite3.Error as e:
+            messagebox.showerror("Error", f"An error occurred: {e}")
+    else:
+        messagebox.showinfo("Cancelled", "Deletion cancelled.")
+
+
 def delete_selected_agency():
     # Get selected item from Treeview
     selected_item = agency_tree.selection()
@@ -530,7 +618,7 @@ def delete_selected_agency():
     if confirm:
         try:
             # Delete from the database
-            conn = sqlite3.connect(R"C:\Users\User\Downloads\Carmala\main\Carmala.db")  # Replace with your actual database path
+            conn = sqlite3.connect("Carmala.db")  # Replace with your actual database path
             cursor = conn.cursor()
             cursor.execute("DELETE FROM AdminAccount WHERE AdminID=?", (AdminID,))  # Adjust to match your table structure
             conn.commit()
@@ -579,7 +667,7 @@ def add_new_agency(AdminID, AdminUsername, AdminPassword, AdminEmail, add_window
 
     try:
         # Insert new agency into the database
-        conn = sqlite3.connect(R"C:\Users\User\Downloads\Carmala\main\Carmala.db")  # Replace with your actual DB path
+        conn = sqlite3.connect("Carmala.db")  # Replace with your actual DB path
         cursor = conn.cursor()
         cursor.execute("INSERT INTO AdminAccount (AdminID, AdminUsername, AdminPassword, AdminEmail) VALUES (?, ?, ?, ?)",
                        (AdminID, AdminUsername, AdminPassword, AdminEmail))
@@ -599,56 +687,80 @@ def add_new_agency(AdminID, AdminUsername, AdminPassword, AdminEmail, add_window
 
 
 def open_add_car_form():
-    # Create a new window for adding car details
+    # Create a new window for adding a car
     add_car_window = tk.Toplevel(root)
     add_car_window.title("Add New Car")
-    add_car_window.geometry("600x600")
+    add_car_window.geometry("600x900")
 
     # Create form labels and entry fields for car details
     tk.Label(add_car_window, text="Car Name:").pack(pady=5)
-    entry_car_name = tk.Entry(add_car_window)
+    entry_car_name = tk.Entry(add_car_window, width=40)
     entry_car_name.pack(pady=5)
 
     tk.Label(add_car_window, text="Car Location:").pack(pady=5)
-    entry_car_location = tk.Entry(add_car_window)
+    entry_car_location = tk.Entry(add_car_window, width=40)
     entry_car_location.pack(pady=5)
 
     tk.Label(add_car_window, text="Car Capacity:").pack(pady=5)
-    entry_car_capacity = tk.Entry(add_car_window)
+    entry_car_capacity = tk.Entry(add_car_window, width=40)
     entry_car_capacity.pack(pady=5)
 
     tk.Label(add_car_window, text="Car Fuel Type:").pack(pady=5)
-    entry_car_fueltype = tk.Entry(add_car_window)
+    entry_car_fueltype = tk.Entry(add_car_window, width=40)
     entry_car_fueltype.pack(pady=5)
 
     tk.Label(add_car_window, text="Car Transmission:").pack(pady=5)
-    entry_car_transmission = tk.Entry(add_car_window)
+    entry_car_transmission = tk.Entry(add_car_window, width=40)
     entry_car_transmission.pack(pady=5)
 
     tk.Label(add_car_window, text="Car Features:").pack(pady=5)
-    entry_car_features = tk.Entry(add_car_window)
+    entry_car_features = tk.Entry(add_car_window, width=40)
     entry_car_features.pack(pady=5)
 
     tk.Label(add_car_window, text="Car Price:").pack(pady=5)
-    entry_car_price = tk.Entry(add_car_window)
+    entry_car_price = tk.Entry(add_car_window, width=40)
     entry_car_price.pack(pady=5)
 
     tk.Label(add_car_window, text="Car Image URL:").pack(pady=5)
-    entry_car_image = tk.Entry(add_car_window)
+    entry_car_image = tk.Entry(add_car_window, width=40)
     entry_car_image.pack(pady=5)
 
-    # Submit button to add car
-    submit_button = tk.Button(add_car_window, text="Add Car", command=lambda: add_car(entry_car_name.get(),entry_car_location.get(),entry_car_capacity.get(), entry_car_fueltype.get(),entry_car_transmission.get(),entry_car_features.get(),entry_car_price.get(),entry_car_image.get(),add_car_window))
+    # Add Car Colour field
+    tk.Label(add_car_window, text="Car Colour:").pack(pady=5)
+    entry_car_color = tk.Entry(add_car_window, width=40)
+    entry_car_color.pack(pady=5)
+
+    # Add Car Type field
+    tk.Label(add_car_window, text="Car Type:").pack(pady=5)
+    entry_car_type = tk.Entry(add_car_window, width=40)
+    entry_car_type.pack(pady=5)
+
+    # Submit button to add the car
+    submit_button = tk.Button(add_car_window, text="Add Car", command=lambda: add_car(
+        entry_car_name.get(),
+        entry_car_location.get(),
+        entry_car_capacity.get(),
+        entry_car_fueltype.get(),
+        entry_car_transmission.get(),
+        entry_car_features.get(),
+        entry_car_price.get(),
+        entry_car_image.get(),
+        entry_car_color.get(),   # Pass the CarColour field value
+        entry_car_type.get(),    # Pass the CarType field value
+        add_car_window           # Pass the window to close it after success
+    ))
     submit_button.pack(pady=20)
 
+
 def logout():
-    if os.path.exists(ADMIN_SESSION_FILE):
-        os.remove(ADMIN_SESSION_FILE)
-    messagebox.showinfo("Logged Out", "You have successfully logged out.")
-    root.destroy()  # Close the application
+    clear_admin_session()
+    messagebox.showinfo("Logout", "You have been logged out.")
+    os.system("python Login.py")  # Redirect to the login page
+    exit()
 
 
-def add_car(name, location, capacity, fueltype, transmission, features, price, image_url, window):
+
+def add_car(name, location, capacity, fueltype, transmission, features, price, image_url, car_color, car_type, window):
     admin_session = get_admin_session()
     if not admin_session:
         messagebox.showerror("Error", "You must be logged in as an admin to add cars.")
@@ -660,11 +772,11 @@ def add_car(name, location, capacity, fueltype, transmission, features, price, i
         conn = sqlite3.connect("Carmala.db")
         cursor = conn.cursor()
 
-        # Insert new car with AdminID
+        # Insert new car with AdminID, CarColour, and CarType
         cursor.execute("""
-            INSERT INTO CarList (CarName, CarLocation, CarCapacity, CarFueltype, CarTransmission, CarFeatures, CarPrice, CarImage, AdminID)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (name, location, capacity, fueltype, transmission, features, price, image_url, admin_id))
+            INSERT INTO CarList (CarName, CarLocation, CarCapacity, CarFueltype, CarTransmission, CarFeatures, CarPrice, CarImage, CarColour, CarType, AdminID)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (name, location, capacity, fueltype, transmission, features, price, image_url, car_color, car_type, admin_id))
 
         conn.commit()
         window.destroy()  # Close the add car window
@@ -694,75 +806,53 @@ def open_edit_car_form():
     # Create a new window for editing car details
     edit_car_window = tk.Toplevel(root)
     edit_car_window.title("Edit Car")
-    edit_car_window.geometry("600x600")
+    edit_car_window.geometry("600x700")
 
     # Create form labels and entry fields pre-filled with the selected car data
-    tk.Label(edit_car_window, text="Car Name:").pack(pady=5)
-    entry_car_name = tk.Entry(edit_car_window, width=40)
-    entry_car_name.pack(pady=5)
-    entry_car_name.insert(0, car_data[1])
+    fields = [
+        ("Car Name", car_data[1]), ("Car Location", car_data[2]), ("Car Capacity", car_data[3]),
+        ("Car Fuel Type", car_data[4]), ("Car Transmission", car_data[5]), ("Car Features", car_data[6]),
+        ("Car Price", car_data[7]), ("Car Image URL", car_data[8]), ("Car Colour", car_data[9]), ("Car Type", car_data[10])
+    ]
 
-    tk.Label(edit_car_window, text="Car Location:").pack(pady=5)
-    entry_car_location = tk.Entry(edit_car_window, width=40)
-    entry_car_location.pack(pady=5)
-    entry_car_location.insert(0, car_data[2])
+    entries = []
+    for label, value in fields:
+        tk.Label(edit_car_window, text=f"{label}:").pack(pady=5)
+        entry = tk.Entry(edit_car_window, width=40)
+        entry.pack(pady=5)
+        entry.insert(0, value)
+        entries.append(entry)
 
-    tk.Label(edit_car_window, text="Car Capacity:").pack(pady=5)
-    entry_car_capacity = tk.Entry(edit_car_window, width=40)
-    entry_car_capacity.pack(pady=5)
-    entry_car_capacity.insert(0, car_data[3])
-
-    tk.Label(edit_car_window, text="Car Fuel Type:").pack(pady=5)
-    entry_car_fueltype = tk.Entry(edit_car_window, width=40)
-    entry_car_fueltype.pack(pady=5)
-    entry_car_fueltype.insert(0, car_data[4])
-
-    tk.Label(edit_car_window, text="Car Transmission:").pack(pady=5)
-    entry_car_transmission = tk.Entry(edit_car_window, width=40)
-    entry_car_transmission.pack(pady=5)
-    entry_car_transmission.insert(0, car_data[5])
-
-    tk.Label(edit_car_window, text="Car Features:").pack(pady=5)
-    entry_car_features = tk.Entry(edit_car_window, width=40)
-    entry_car_features.pack(pady=5)
-    entry_car_features.insert(0, car_data[6])
-
-    tk.Label(edit_car_window, text="Car Price:").pack(pady=5)
-    entry_car_price = tk.Entry(edit_car_window, width=40)
-    entry_car_price.pack(pady=5)
-    entry_car_price.insert(0, car_data[7])
-
-    tk.Label(edit_car_window, text="Car Image URL:").pack(pady=5)
-    entry_car_image = tk.Entry(edit_car_window, width=40)
-    entry_car_image.pack(pady=5)
-    entry_car_image.insert(0, car_data[8])
-
-    # Submit button to update car details
-    submit_button = tk.Button(edit_car_window, text="Save Changes", command=lambda: edit_car(car_data[0], # car_id
-                                                                                             entry_car_name.get(),
-                                                                                             entry_car_location.get(),
-                                                                                             entry_car_capacity.get(),
-                                                                                             entry_car_fueltype.get(),
-                                                                                             entry_car_transmission.get(),
-                                                                                             entry_car_features.get(),
-                                                                                             entry_car_price.get(),
-                                                                                             entry_car_image.get(),
-                                                                                             edit_car_window))
+    # Add a save button to save the changes
+    submit_button = tk.Button(edit_car_window, text="Save Changes", command=lambda: edit_car(
+        car_data[0],  # CarID
+        entries[0].get(),  # CarName
+        entries[1].get(),  # CarLocation
+        entries[2].get(),  # CarCapacity
+        entries[3].get(),  # CarFuelType
+        entries[4].get(),  # CarTransmission
+        entries[5].get(),  # CarFeatures
+        entries[6].get(),  # CarPrice
+        entries[7].get(),  # CarImage
+        entries[8].get(),  # CarColour
+        entries[9].get(),  # CarType
+        edit_car_window   # Close the window after successful edit
+    ))
     submit_button.pack(pady=20)
 
 
-def edit_car(car_id, name, location, capacity, fueltype, transmission, features, price, image, window):
+def edit_car(car_id, name, location, capacity, fueltype, transmission, features, price, image, color, car_type, window):
     # Update the car details in the database
-    conn = sqlite3.connect(R"C:\Users\User\Downloads\Carmala\main\Carmala.db")  # Replace with your actual DB path
+    conn = sqlite3.connect("Carmala.db")  # Replace with your actual DB path
     cursor = conn.cursor()
 
     # Execute update query
     cursor.execute("""
         UPDATE CarList SET 
         CarName = ?, CarLocation = ?, CarCapacity = ?, CarFueltype = ?, CarTransmission = ?, 
-        CarFeatures = ?,CarPrice = ?,CarImage = ?
-        WHERE CarID= ?
-    """, (name, location, capacity, fueltype, transmission, features, price, image, car_id))
+        CarFeatures = ?, CarPrice = ?, CarImage = ?, CarColour = ?, CarType = ?
+        WHERE CarID = ?
+    """, (name, location, capacity, fueltype, transmission, features, price, image, color, car_type, car_id))
 
     conn.commit()
     conn.close()
@@ -775,17 +865,19 @@ def edit_car(car_id, name, location, capacity, fueltype, transmission, features,
 
     messagebox.showinfo("Edit Car", "Car details updated successfully.")
 
+
+
 def display_booking_history():
-    admin_session = get_admin_session()
-    if not admin_session:
+    # Retrieve the logged-in admin's session data
+    admin_session = Session.get_admin_session()
+    if not admin_session or "admin_id" not in admin_session:
         messagebox.showerror("Error", "You must be logged in as an admin to view booking history.")
         return
 
     admin_id = admin_session["admin_id"]  # Retrieve AdminID from session
-    booking_history_frame.pack(fill=tk.BOTH, expand=True)  # Show booking history frame
-    admin_frame.pack_forget()  # Hide admin panel
+    print(f"Displaying booking history for Admin ID: {admin_id}")  # Debugging print
 
-    # Clear previous entries
+    # Clear previous entries in the treeview
     for row in booking_tree.get_children():
         booking_tree.delete(row)
 
@@ -811,18 +903,22 @@ def display_booking_history():
         messagebox.showerror("Database Error", f"An error occurred: {e}")
 
 
-
 def display_pending_bookings():
-    admin_session = get_admin_session()
-    if not admin_session:
-        messagebox.showerror("Error", "You must be logged in as an admin to view bookings.")
+    # Retrieve the logged-in admin's session data
+    admin_session = Session.get_admin_session()
+    if not admin_session or "admin_id" not in admin_session:
+        messagebox.showerror("Error", "You must be logged in as an admin to view pending bookings.")
         return
 
     admin_id = admin_session["admin_id"]  # Retrieve AdminID from session
-    pending_bookings_frame.pack(fill=tk.BOTH, expand=True)  # Show the pending bookings frame
-    admin_frame.pack_forget()  # Hide admin panel
+    is_superadmin = admin_session.get("SuperAdmin", False)  # Check if the admin is a SuperAdmin
+    print(f"Displaying pending bookings for Admin ID: {admin_id} (SuperAdmin: {is_superadmin})")  # Debugging print
 
-    # Clear previous entries
+    # Show the pending bookings frame and hide the admin panel
+    pending_bookings_frame.pack(fill=tk.BOTH, expand=True)
+    admin_frame.pack_forget()
+
+    # Clear previous entries in the treeview
     for row in pending_bookings_tree.get_children():
         pending_bookings_tree.delete(row)
 
@@ -830,15 +926,30 @@ def display_pending_bookings():
         conn = sqlite3.connect("Carmala.db")  # Replace with your actual DB path
         cursor = conn.cursor()
 
-        # Filter bookings where AdminID matches
-        cursor.execute("""
-            SELECT BookingID, UserID, CarID, PickupDate, DropoffDate, BookingStatus
-            FROM Booking
-            WHERE BookingStatus = 'Pending' AND AdminID = ?
-        """, (admin_id,))
+        # SuperAdmin can view all pending bookings
+        if is_superadmin:
+            cursor.execute("""
+                SELECT 
+                    b.BookingID, b.UserID, b.CarID, c.CarName, 
+                    b.PickupDate, b.DropoffDate, b.BookingStatus
+                FROM Booking b
+                LEFT JOIN CarList c ON b.CarID = c.CarID
+                WHERE b.BookingStatus = 'Pending'
+            """)
+        else:
+            # Regular admin can view only their bookings
+            cursor.execute("""
+                SELECT 
+                    b.BookingID, b.UserID, b.CarID, c.CarName, 
+                    b.PickupDate, b.DropoffDate, b.BookingStatus
+                FROM Booking b
+                LEFT JOIN CarList c ON b.CarID = c.CarID
+                WHERE b.BookingStatus = 'Pending' AND b.AdminID = ?
+            """, (admin_id,))
+
         rows = cursor.fetchall()
 
-        # Insert data into the Pending Bookings Treeview
+        # Insert data into the treeview
         for row in rows:
             pending_bookings_tree.insert("", tk.END, values=row)
 
@@ -846,6 +957,70 @@ def display_pending_bookings():
 
     except sqlite3.Error as e:
         messagebox.showerror("Database Error", f"An error occurred: {e}")
+
+
+def open_feedback_page():
+    # Check if the admin is logged in
+    admin_session = Session.get_admin_session()
+    if not admin_session:
+        messagebox.showerror("Error", "Admin not logged in.")
+        return
+
+    admin_id = admin_session["admin_id"]
+    is_superadmin = admin_session.get("SuperAdmin", False)  # Check if the admin is a SuperAdmin
+    print(f"Opening feedback page for Admin ID: {admin_id} (SuperAdmin: {is_superadmin})")  # Debugging print
+
+    # Fetch customer feedback
+    fetch_customer_feedback(admin_id, is_superadmin)
+
+def fetch_customer_feedback(admin_id, is_superadmin):
+    try:
+        conn = sqlite3.connect('Carmala.db')  # Replace with your actual database path
+        cursor = conn.cursor()
+
+        # SuperAdmin can view all feedback
+        if is_superadmin:
+            cursor.execute("""
+                SELECT RatingID, UserID, Stars, Comment FROM Rating
+            """)
+        else:
+            # Regular admin can view feedback specific to their AdminID
+            cursor.execute("""
+                SELECT RatingID, UserID, Stars, Comment FROM Rating WHERE AdminID = ?
+            """, (admin_id,))
+
+        rows = cursor.fetchall()
+        if rows:
+            # Pass the feedback data to display_feedback
+            display_feedback(rows)
+        else:
+            messagebox.showinfo("No Feedback", "No customer feedback available.")
+
+        conn.close()
+
+    except sqlite3.Error as e:
+        messagebox.showerror("Database Error", f"An error occurred: {e}")
+
+def display_feedback(feedback_data):
+    # Create a new window or frame for displaying feedback
+    feedback_window = tk.Toplevel(root)
+    feedback_window.title("Customer Feedback")
+    feedback_window.geometry("600x400")
+
+    # Create a treeview for displaying feedback
+    feedback_tree = ttk.Treeview(feedback_window, columns=("RatingID", "UserID", "Stars", "Comment"), show="headings")
+    feedback_tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+    # Define column headings
+    feedback_tree.heading("RatingID", text="Rating ID")
+    feedback_tree.heading("UserID", text="User ID")
+    feedback_tree.heading("Stars", text="Stars")
+    feedback_tree.heading("Comment", text="Comment")
+
+    # Insert rows into the Treeview
+    for row in feedback_data:
+        feedback_tree.insert("", tk.END, values=row)
+
 
 
 # --- MAIN WINDOW SETUP --- #
@@ -1065,12 +1240,12 @@ admin_image_label = tk.Label(admin_frame)
 admin_image_label.pack(fill=tk.BOTH, expand=True)
 
 # Admin panel buttons
-button_statistics = tk.Button(admin_frame, text="Booking History", font="Poppins", command=display_booking_history)
+
 button_pending_bookings = tk.Button(admin_frame, text="Pending Bookings", font="Poppins", command=display_pending_bookings)
-button_feedback = tk.Button(admin_frame, text="Customer Feedback", font="Poppins", command=lambda: print("Feedback"))
+button_feedback = tk.Button(admin_frame, text="Customer Feedback", font="Poppins", command=open_feedback_page)
 button_manage_cars = tk.Button(admin_frame, text="Show Cars", font="Poppins", command=display_car_availability)
 button_agencies = tk.Button(admin_frame, text="Agencies", font="Poppins", command=display_agencies_frame)
-button_settings = tk.Button(admin_frame, text="Settings", font="Poppins", command=lambda: print("Settings"))
+
 
 logout_button = tk.Button(admin_frame, text="Logout", command=logout)
 logout_button.place(x=65, y=680, width=180, height=40)
@@ -1180,11 +1355,12 @@ back_button = tk.Button(pending_bookings_frame, text="Back", command=lambda: [pe
 back_button.pack(pady=10)
 
 # Define columns for the Pending Bookings Treeview
-pending_bookings_columns = ("BookingID", "UserID", "CarID", "PickupDate", "DropoffDate", "BookingStatus")
+pending_bookings_columns = ("BookingID", "UserID", "CarID","CarName", "PickupDate", "DropoffDate", "BookingStatus")
 pending_bookings_tree = ttk.Treeview(pending_bookings_frame, columns=pending_bookings_columns, show="headings")
 pending_bookings_tree.heading("BookingID", text="Booking ID")
 pending_bookings_tree.heading("UserID", text="User ID")
 pending_bookings_tree.heading("CarID", text="Car ID")
+pending_bookings_tree.heading("CarName", text="Car Name")
 pending_bookings_tree.heading("PickupDate", text="Pickup Date")
 pending_bookings_tree.heading("DropoffDate", text="Dropoff Date")
 pending_bookings_tree.heading("BookingStatus", text="Booking Status")
