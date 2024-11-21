@@ -31,7 +31,7 @@ def fetch_booking_details(logged_in_user_id, order_by="BookingDate DESC", status
     query = '''
         SELECT Booking.BookingID, Booking.PickupDate, Booking.DropoffDate, Booking.BookingDate,
        CarList.CarName, CarList.CarPrice, Booking.BookingStatus, CarList.CarID, 
-       AdminAccount.AdminID, UserAccount.Email
+       AdminAccount.AdminID, UserAccount.Email, CarImage
         FROM Booking
         JOIN CarList ON Booking.CarID = CarList.CarID
         JOIN AdminAccount ON CarList.AdminID = AdminAccount.AdminID
@@ -332,15 +332,15 @@ def open_payment_page(selected_bookings, total_price):
     global payment_window
     payment_window = tk.Toplevel(booking_window)
     payment_window.title("Checkout")
-    payment_window.geometry("1280x780")
+    payment_window.geometry("910x760")
 
     # Debugging: Inspect selected_bookings
     print("Selected bookings in payment page:", selected_bookings)
 
     # Background image setup
-    image_path = r"C:\Users\User\OneDrive\Pictures\Group 3.png"
+    image_path = r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-11-20 224726.png"
     bg_image = Image.open(image_path)
-    bg_image = bg_image.resize((1280, 780), Image.LANCZOS)
+    bg_image = bg_image.resize((910, 760), Image.LANCZOS)
     bg_photo = ImageTk.PhotoImage(bg_image)
 
     bg_label = tk.Label(payment_window, image=bg_photo)
@@ -351,62 +351,94 @@ def open_payment_page(selected_bookings, total_price):
         payment_window.destroy()
         booking_window.deiconify()
 
-    button_back = tk.Button(payment_window, text="Back", font=("Arial", 10), bg="#0a47a3", command=go_back)
-    button_back.place(x=900, y=125, width=90, height=40)
+    button_back = tk.Button(payment_window, text="Back to Booking", font=("Arial", 10, "bold"), bg="#1572D3", fg="white", command=go_back)
+    button_back.place(x=690, y=115, width=160, height=30)
 
-    # Booking Details Frame
+    # Booking Details and Price Frames
     details_frame = tk.Frame(payment_window, bg="#FFFFFF", bd=2, relief=tk.GROOVE)
-    details_frame.place(x=280, y=280, width=420, height=280)
+    details_frame.place(x=103, y=275, width=455, height=289)
 
-    # Generate booking details string
-    booking_info = ""
+    price_frame = tk.Frame(payment_window, bg="#FFFFFF", bd=2, relief=tk.GROOVE)
+    price_frame.place(x=585, y=275, width=218, height=289)
+
+    # Display car images, details, and price calculations side by side
     for booking in selected_bookings:
         try:
-            car_name = booking[4]
-            car_price = booking[5]
-            pickup_date = booking[1]
-            dropoff_date = booking[2]
+            car_name = booking[4]  # Car Name
+            car_price = float(booking[5])  # Car Price
+            pickup_date = booking[1]  # Pickup Date
+            dropoff_date = booking[2]  # Dropoff Date
+            car_image = booking[10]  # Car Image (added in the query)
 
-            # Format dates
-            pickup_date_formatted = datetime.strptime(pickup_date, "%Y-%m-%d").strftime("%d-%m-%Y")
-            dropoff_date_formatted = datetime.strptime(dropoff_date, "%Y-%m-%d").strftime("%d-%m-%Y")
+            # Calculate booking duration
+            pickup_date_formatted = datetime.strptime(pickup_date, "%Y-%m-%d")
+            dropoff_date_formatted = datetime.strptime(dropoff_date, "%Y-%m-%d")
+            days_booked = (dropoff_date_formatted - pickup_date_formatted).days + 1
 
-            # Calculate number of days booked
-            days_booked = (datetime.strptime(dropoff_date, "%Y-%m-%d") - datetime.strptime(pickup_date, "%Y-%m-%d")).days
+            # Booking Details Panel
+            booking_panel = tk.Frame(details_frame, bg="#FFFFFF", padx=10, pady=10)
+            booking_panel.pack(fill=tk.X, pady=5)
 
-            booking_info += (
-                f"Car: {car_name}, Price: RM{car_price}\n"
-                f"From: {pickup_date_formatted}, To: {dropoff_date_formatted}\n"
-                f"Days Booked: {1 + days_booked} days\n\n"
+            # Left Panel for Image
+            image_frame = tk.Frame(booking_panel, bg="#FFFFFF")
+            image_frame.pack(side=tk.LEFT, padx=10)
+
+            # Display car image
+            if car_image and os.path.exists(car_image):
+                image = Image.open(car_image)
+                image = image.resize((150, 100))  # Adjust size as needed
+                photo = ImageTk.PhotoImage(image)
+
+                # Create and display the image in the UI
+                image_label = tk.Label(image_frame, image=photo, bg="#FFFFFF")
+                image_label.image = photo  # Keep reference to avoid garbage collection
+                image_label.pack()
+            else:
+                tk.Label(image_frame, text="No Image Available", font=("Arial", 12), bg="#FFFFFF").pack()
+
+            # Right Panel for Details
+            details_panel = tk.Frame(booking_panel, bg="#FFFFFF")
+            details_panel.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+            # Car details
+            booking_details = (
+                f"Car Name: {car_name}\n"
+                f"Pickup Date: {pickup_date_formatted.strftime('%d-%m-%Y')}\n"
+                f"Dropoff Date: {dropoff_date_formatted.strftime('%d-%m-%Y')}\n"
+                f"Days Booked: {days_booked} days"
             )
+            tk.Label(details_panel, text=booking_details, font=("Arial", 12), bg="#FFFFFF", justify="left", anchor="w").pack()
+
+            # Price Calculation Panel
+            price_panel = tk.Frame(price_frame, bg="#FFFFFF", padx=10, pady=10)
+            price_panel.pack(fill=tk.X, pady=5)
+
+            # Calculate total price for the booking
+            total_booking_price = car_price * days_booked
+            price_details = f"RM{car_price} x {days_booked} days\n= RM{total_booking_price}"
+
+            # Display price
+            tk.Label(price_panel, text=price_details, font=("Arial", 12, "bold"), bg="#FFFFFF", justify="center").pack()
+
         except Exception as e:
             print(f"Error processing booking details for {booking}: {e}")
 
-    # Display booking details
-    booking_details_label = tk.Label(details_frame, text=booking_info, font=("Arial", 12), bg="#FFFFFF",
-                                     justify="left", anchor="w")
-    booking_details_label.pack(padx=10, pady=10)
-
-    # Debugging: Inspect total price and selected bookings
-    print(f"Total price passed to payment page: RM{total_price}")
-    print("Selected bookings passed to payment page:", selected_bookings)
-
-    # Display total price
-    price_label = tk.Label(payment_window, text=f"Total Price: RM{total_price}", font=("Arial", 14, "bold"), bg="#F1F1F1")
-    price_label.place(x=770, y=500)
+    # Total price label
+    total_price_label = tk.Label(payment_window, text=f"Total Price: RM{total_price}", font=("Arial", 14, "bold"), bg="#FEFEFE")
+    total_price_label.place(x=593, y=500)
 
     # Payment Option Buttons
-    button_e_wallet = tk.Button(payment_window, text="E-Wallet", font=("Arial", 14), bg="#0a47a3", fg="white",
+    button_e_wallet = tk.Button(payment_window, text="E-Wallet", font=("Arial", 14, "bold"), bg="#0F4EDE", fg="white",
                                 command=lambda: process_payment("E-Wallet"))
-    button_e_wallet.place(x=280, y=600, width=230, height=70)
+    button_e_wallet.place(x=120, y=590, width=230, height=70)
 
-    button_online_banking = tk.Button(payment_window, text="Online Banking", font=("Arial", 14), bg="#0a47a3",
+    button_online_banking = tk.Button(payment_window, text="Online Banking", font=("Arial", 14, "bold"), bg="#0BDFDF",
                                       fg="white", command=lambda: process_payment("Online Banking"))
-    button_online_banking.place(x=525, y=600, width=230, height=70)
+    button_online_banking.place(x=335, y=590, width=230, height=70)
 
-    button_card = tk.Button(payment_window, text="Credit/Debit Card", font=("Arial", 14), bg="#0a47a3", fg="white",
+    button_card = tk.Button(payment_window, text="Credit/Debit Card", font=("Arial", 14, "bold"), bg="#0CBDA8", fg="white",
                             command=lambda: process_payment("Credit/Debit Card"))
-    button_card.place(x=770, y=600, width=230, height=70)
+    button_card.place(x=560, y=590, width=230, height=70)
 
     def process_payment(payment_type, card_window=None):
         if not selected_bookings:
