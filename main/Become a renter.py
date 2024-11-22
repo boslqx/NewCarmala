@@ -37,7 +37,9 @@ ctk.set_default_color_theme("blue")  # Set default color theme
 
 root = ctk.CTk()
 root.title("Become a renter")
-root.geometry("1280x710")  # Set window size to 1280x780
+root.geometry("1030x620")
+root.resizable(False, False)
+
 
 # Set up a frame for the canvas and scrollbar
 frame = ctk.CTkFrame(root)
@@ -56,17 +58,7 @@ canvas.configure(yscrollcommand=scrollbar.set)
 canvas.bind('<Configure>', lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
 
 # Create the "Back to Home" button without extra space and transparent background
-home_button = ctk.CTkButton(
-    root,
-    text="Back to Home",
-    font=("Poppins", 12, "bold"),
-    command=open_home,
-    hover_color="#1572D3",  # Light blue hover color, or use the default hover color
-    border_width=0,  # Remove border
-    cursor="hand2",  # Change cursor to hand on hover
-    width=100,  # Set to 0 to minimize width
-    height=20  # Set to 0 to minimize height
-)
+home_button = ctk.CTkButton(root,text="Back to Home",font=("Poppins", 12, "bold"),command=open_home,hover_color="#1572D3",cursor="hand2",  height=20)
 home_button.bind("<Enter>", lambda event: on_hover(home_button, "#1058A7"))
 home_button.bind("<Leave>", lambda event: on_leave(home_button, "#1572D3"))
 canvas.create_window(50, 40, anchor="nw", window=home_button)
@@ -96,17 +88,8 @@ for idx, image_path in enumerate(image_paths):
     canvas.create_image(0, idx * window_height, anchor="nw", image=img_tk)
 
 # Add the "Back to Top" button without extra space and transparent background
-back_to_top_button = ctk.CTkButton(
-    root,
-    text="Back to Top",
-    font=("Poppins", 12, "bold"),
-    command=scroll_to_top,
-    hover_color="#ADD8E6",  # Light blue hover color, or use the default hover color
-    border_width=0,  # Remove border
-    cursor="hand2",  # Change cursor to hand on hover
-    width=150,  # Set to 0 to minimize width
-    height=0  # Set to 0 to minimize height
-)
+back_to_top_button = ctk.CTkButton(root,text="Back to Top",font=("Poppins", 12, "bold"),command=scroll_to_top,hover_color="#ADD8E6",
+                                   border_width=0,cursor="hand2",width=150, height=0 )
 back_to_top_button.bind("<Enter>", lambda event: on_hover(back_to_top_button, "#1058A7"))
 back_to_top_button.bind("<Leave>", lambda event: on_leave(back_to_top_button, "#1572D3"))
 canvas.create_window(550, len(image_paths) * window_height - 70, anchor="nw", window=back_to_top_button)

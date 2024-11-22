@@ -151,7 +151,6 @@ def load_user_data():
 # Function to toggle editing
 def toggle_edit(state):
     username_entry.config(state='normal' if state else 'readonly')
-    email_entry.config(state='normal' if state else 'readonly')
     gender_combobox.config(state='normal' if state else 'readonly')
     country_entry.config(state='normal' if state else 'readonly')
     id_entry.config(state='normal' if state else 'readonly')
@@ -159,6 +158,9 @@ def toggle_edit(state):
     upload_license_btn.config(state='normal' if state else 'disabled')
     save_btn.config(state='normal' if state else 'disabled')
     edit_btn.config(state='disabled' if state else 'normal')
+
+    # Ensure email_entry remains readonly regardless of the state
+    email_entry.config(state='readonly')
 
 # Functions to upload files
 def upload_profile_picture():
@@ -191,10 +193,11 @@ def on_hover(button, color):
 def on_leave(button, color):
     button['bg'] = color
 
-# GUI setup
+# Window setup
 root = tk.Tk()
 root.title("User Profile")
 root.geometry("1100x700")
+root.resizable(False, False)
 
 # Create main canvas
 canvas = tk.Canvas(root, width=1000, height=700)

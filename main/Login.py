@@ -9,9 +9,6 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from tkinter import simpledialog
-import json
-
-import json
 
 # The login function to verify user or admin credentials
 def login():
@@ -167,30 +164,44 @@ def register_user():
         messagebox.showerror("Error", "Password must be at least 8 characters and contain no special characters!")
     else:
         try:
-            # Connect to database and insert user data
+            # Connect to the database
             conn = sqlite3.connect('Carmala.db')
             cursor = conn.cursor()
-            cursor.execute('''
-                INSERT INTO UserAccount (email, username, password) 
-                VALUES (?, ?, ?)
-            ''', (reg_email, reg_username, reg_password))
-            conn.commit()
+
+            # Check if the email already exists
+            cursor.execute("SELECT * FROM UserAccount WHERE Email = ?", (reg_email,))
+            existing_user = cursor.fetchone()
+
+            if existing_user:
+                messagebox.showerror("Error", "This email is already registered. Please use a different email.")
+            else:
+                # Insert the new user into the database
+                cursor.execute('''
+                    INSERT INTO UserAccount (Email, Username, Password) 
+                    VALUES (?, ?, ?)
+                ''', (reg_email, reg_username, reg_password))
+                conn.commit()
+
+                # Generate verification code and send email
+                verification_code = generate_verification_code()
+                if send_verification_email(reg_email, verification_code):
+                    messagebox.showinfo(
+                        "Success",
+                        "User registered successfully! Check your email for the verification code."
+                    )
+                    # Switch to the verification frame
+                    registration_frame.pack_forget()
+                    verification_frame.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
+                else:
+                    messagebox.showerror("Error", "Failed to send verification email. Please try again.")
             conn.close()
 
-            # Generate verification code and send email
-            verification_code = generate_verification_code()
-            if send_verification_email(reg_email, verification_code):
-                messagebox.showinfo("Success",
-                                    "User registered successfully! Check your email for the verification code.")
+        except sqlite3.Error as e:
+            messagebox.showerror("Database Error", f"An error occurred: {e}")
+        finally:
+            if conn:
+                conn.close()
 
-                # Switch to the verification frame
-                registration_frame.pack_forget()
-                verification_frame.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
-            else:
-                messagebox.showerror("Error", "Failed to send verification email. Please try again.")
-
-        except sqlite3.IntegrityError:
-            messagebox.showerror("Error", "Username already exists!")
 
 
 
@@ -340,6 +351,7 @@ def toggle_password_visibility():
 root = tk.Tk()
 root.title("Account Login Page")
 root.geometry('1000x680')
+root.resizable(False, False)
 
 # Call the function to create the database and table
 create_db()

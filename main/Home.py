@@ -72,38 +72,45 @@ def open_car_list(location, pickup_date, return_date):
 def search_action():
     location = location_entry.get().strip()  # Trim any leading/trailing spaces
     try:
-        # Get the pickup and return dates, ensuring they are datetime objects
+        # Get the pickup and return dates as datetime objects
         pickup_date = pickup_date_entry.get_date()
-        if isinstance(pickup_date, str):
-            pickup_date = datetime.strptime(pickup_date, '%Y-%m-%d')
-
         return_date = return_date_entry.get_date()
-        if isinstance(return_date, str):
-            return_date = datetime.strptime(return_date, '%Y-%m-%d')
+        current_date = datetime.now().date()  # Get today's date
 
-        # Format dates as 'YYYY-MM-DD'
+        # Validate fields are not empty
+        if not location or not pickup_date or not return_date:
+            messagebox.showwarning("Input Error", "Please fill all the fields.")
+            return
+
+        # Date validation
+        if pickup_date < current_date:
+            messagebox.showerror("Invalid Pickup Date", "Pickup date cannot be in the past.")
+            return
+
+        if return_date < pickup_date:
+            messagebox.showerror("Invalid Return Date", "Return date cannot be earlier than the pickup date.")
+            return
+
+        if return_date < current_date:
+            messagebox.showerror("Invalid Return Date", "Return date cannot be in the past.")
+            return
+
+        # Format dates as 'YYYY-MM-DD' for consistency
         pickup_date_str = pickup_date.strftime('%Y-%m-%d')
         return_date_str = return_date.strftime('%Y-%m-%d')
 
-        # Simple validation to ensure the fields are not empty
-        if not location or not pickup_date_str or not return_date_str:
-            messagebox.showwarning("Input Error", "Please fill all the fields.")
-        else:
-            # Call get_available_cars with the correct arguments
-            try:
-                # Pass pickup_date_str and return_date_str directly
-                available_cars = get_available_cars(location, pickup_date_str, return_date_str)
-                if not available_cars:
-                    messagebox.showinfo("No Cars Available", f"No cars available in {location} during the selected dates.")
-                else:
-                    # Proceed to open the Car List window without trying to format dates again
-                    open_car_list(location, pickup_date_str, return_date_str)
-            except Exception as e:
-                messagebox.showerror("Error", f"Failed to open car list: {str(e)}")
+        # Call get_available_cars with the correct arguments
+        try:
+            available_cars = get_available_cars(location, pickup_date_str, return_date_str)
+            if not available_cars:
+                messagebox.showinfo("No Cars Available", f"No cars available in {location} during the selected dates.")
+            else:
+                # Open the Car List window with the valid dates
+                open_car_list(location, pickup_date_str, return_date_str)
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to open car list: {str(e)}")
     except Exception as date_error:
-        messagebox.showerror("Date Error", f"Failed to parse dates: {str(date_error)}")
-
-
+        messagebox.showerror("Date Error", f"Failed to process dates: {str(date_error)}")
 
 
 def open_userprofile():
@@ -173,11 +180,7 @@ def log_out():
     subprocess.Popen(["python", "Login.py"])
 
 
-import sqlite3
-from tkinter import messagebox
-import Session
-
-
+# Function to submit rating
 def submit_rating():
     # Get the selected rating, comment, and selected car
     rating = rating_var.get()  # Get the selected rating (1 to 5)
@@ -253,7 +256,7 @@ def submit_rating():
     except Exception as e:
         messagebox.showerror("Unexpected Error", f"An unexpected error occurred: {e}")
 
-
+# Function to open rating window
 def open_rating_window():
     global rating_window, rating_var, comment_entry, stars, car_combobox
 
@@ -332,6 +335,7 @@ def open_rating_window():
     )
     submit_button.pack(pady=10)
 
+# Function to let user rate stars
 def select_star(rating):
     """Function to handle star selection for the rating."""
     rating_var.set(rating)
@@ -467,6 +471,7 @@ def on_leave(button, color):
 root = tk.Tk()
 root.title("Car Rental Service")
 root.geometry("1200x700")  # Adjust window size to fit the design
+root.resizable(False, False)
 
 # Load and set the background image in the Home tab
 background_image_path = r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-10-17 095826.png"  # Your background image path

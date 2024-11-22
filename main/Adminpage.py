@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, filedialog
 from tkinter import ttk
 from PIL import Image, ImageTk
 import sqlite3
@@ -16,6 +16,12 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import pandas as pd
 import Session
+from tkinter import Toplevel, Label, Button
+import io
+from tkinter import Text
+import subprocess
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
 
 
 ADMIN_SESSION_FILE = "AdminSession.json"
@@ -71,7 +77,12 @@ def show_admin_info():
     else:
         print("No admin is currently logged in.")
 
+# Function to change button color on hover
+def on_hover(button, color):
+    button['bg'] = color
 
+def on_leave(button, color):
+    button['bg'] = color
 
 def open_admin_panel():
     # Hide the login frame and display the admin panel
@@ -82,15 +93,39 @@ def open_admin_panel():
     right_frame.pack_forget()
 
     # Load and set admin-specific image background
-    admin_image_path = r"C:\Users\User\Downloads\Group 5.png"  # Add your path
+    admin_image_path = r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-11-21 194312.png"
     admin_image = Image.open(admin_image_path)
-    admin_image = admin_image.resize((1280, 780), Image.LANCZOS)
+    admin_image = admin_image.resize((1200, 700), Image.LANCZOS)
     admin_photo = ImageTk.PhotoImage(admin_image)
     admin_image_label.config(image=admin_photo)
     admin_image_label.image = admin_photo  # Keep reference to avoid garbage collection
 
     # Position buttons on the admin panel
     place_buttons_on_image()
+
+    # Database connection
+    connection = sqlite3.connect("Carmala.db")  # Adjust the database name/path as necessary
+    cursor = connection.cursor()
+
+    # Fetch the AdminUsername
+    query = "SELECT AdminUsername FROM AdminAccount WHERE AdminID = ?"
+    cursor.execute(query, (admin_id,))
+    result = cursor.fetchone()
+
+    # Check if a result is found
+    if result:
+        admin_username = result[0]
+        print(f"Welcome, {admin_username}!")  # Or use it in a Tkinter label
+    else:
+        print("Admin not found!")
+
+    welcome_label = tk.Label(admin_frame, text=f"Welcome, {admin_username}", font=("Poor Richard", 20, "bold"),
+                             bg="#FFFFFF", fg="black")
+    welcome_label.place(x=210, y=40)
+
+    stats_label = tk.Label(admin_frame, text="Statistic Report", font=("Poppibs", 14, "bold underline"),
+                             bg="#FFFFFF", fg="black")
+    stats_label.place(x=600, y=90)
 
     # Display the statistics chart on the right side
     display_statistics_chart()
@@ -100,10 +135,13 @@ def open_admin_panel():
 # Function to place buttons in the admin panel
 def place_buttons_on_image():
     # Side panel buttons
-    button_pending_bookings.place(x=65, y=205, width=180, height=40)
-    button_feedback.place(x=65, y=255, width=180, height=40)
-    button_manage_cars.place(x=65, y=305, width=180, height=40)
-    button_agencies.place(x=65, y=355, width=180, height=40)
+    button_pending_bookings.place(x=10, y=155, width=180, height=40)
+
+    button_feedback.place(x=10, y=205, width=180, height=40)
+    button_manage_cars.place(x=10, y=255, width=180, height=40)
+    button_agencies.place(x=10, y=305, width=180, height=40)
+    button_manage_users.place(x=10, y=355, width=180, height=40)
+    button_print.place(x=10, y=405, width=180, height=40)
 
 
 def get_statistics_data():
@@ -285,7 +323,7 @@ def display_revenue_chart():
     # Create a canvas to display the chart in Tkinter
     canvas = FigureCanvasTkAgg(fig, master=admin_frame)
     canvas.draw()
-    canvas.get_tk_widget().place(x=850, y=150, width=400, height=300)
+    canvas.get_tk_widget().place(x=750, y=123, width=400, height=300)
 
 
 def display_statistics_chart():
@@ -323,7 +361,7 @@ def display_statistics_chart():
     # Create a canvas to display the chart in Tkinter
     canvas = FigureCanvasTkAgg(fig, master=admin_frame)
     canvas.draw()
-    canvas.get_tk_widget().place(x=400, y=150, width=400, height=300)
+    canvas.get_tk_widget().place(x=230, y=123, width=400, height=300)
 
 
 
@@ -380,7 +418,7 @@ def display_pie_chart(data, labels, title, x, y, width=400, height=300):
     # Embed the chart in the Tkinter admin panel
     canvas = FigureCanvasTkAgg(fig, master=admin_frame)
     canvas.draw()
-    canvas.get_tk_widget().place(x=300, y=500, width=800, height=height)
+    canvas.get_tk_widget().place(x=200, y=430, width=780, height=height)
 
 
 
@@ -867,42 +905,6 @@ def edit_car(car_id, name, location, capacity, fueltype, transmission, features,
 
 
 
-def display_booking_history():
-    # Retrieve the logged-in admin's session data
-    admin_session = Session.get_admin_session()
-    if not admin_session or "admin_id" not in admin_session:
-        messagebox.showerror("Error", "You must be logged in as an admin to view booking history.")
-        return
-
-    admin_id = admin_session["admin_id"]  # Retrieve AdminID from session
-    print(f"Displaying booking history for Admin ID: {admin_id}")  # Debugging print
-
-    # Clear previous entries in the treeview
-    for row in booking_tree.get_children():
-        booking_tree.delete(row)
-
-    try:
-        conn = sqlite3.connect("Carmala.db")  # Replace with your actual DB path
-        cursor = conn.cursor()
-
-        # Query to fetch booking history associated with the AdminID
-        cursor.execute("""
-            SELECT HistoryID, BookingID, PickupDate, DropoffDate
-            FROM BookingHistory
-            WHERE AdminID = ?
-        """, (admin_id,))
-        rows = cursor.fetchall()
-
-        # Insert data into the Booking Treeview
-        for row in rows:
-            booking_tree.insert("", tk.END, values=row)
-
-        conn.close()
-
-    except sqlite3.Error as e:
-        messagebox.showerror("Database Error", f"An error occurred: {e}")
-
-
 def display_pending_bookings():
     # Retrieve the logged-in admin's session data
     admin_session = Session.get_admin_session()
@@ -981,12 +983,17 @@ def fetch_customer_feedback(admin_id, is_superadmin):
         # SuperAdmin can view all feedback
         if is_superadmin:
             cursor.execute("""
-                SELECT RatingID, UserID, Stars, Comment FROM Rating
+                SELECT r.RatingID, r.UserID, c.CarName, r.Stars, r.Comment, r.AdminID, r.CarID
+                FROM Rating r
+                LEFT JOIN CarList c ON r.CarID = c.CarID
             """)
         else:
             # Regular admin can view feedback specific to their AdminID
             cursor.execute("""
-                SELECT RatingID, UserID, Stars, Comment FROM Rating WHERE AdminID = ?
+                SELECT r.RatingID, r.UserID, c.CarName, r.Stars, r.Comment, r.AdminID, r.CarID
+                FROM Rating r
+                LEFT JOIN CarList c ON r.CarID = c.CarID
+                WHERE r.AdminID = ?
             """, (admin_id,))
 
         rows = cursor.fetchall()
@@ -1002,20 +1009,78 @@ def fetch_customer_feedback(admin_id, is_superadmin):
         messagebox.showerror("Database Error", f"An error occurred: {e}")
 
 def display_feedback(feedback_data):
-    # Create a new window or frame for displaying feedback
-    feedback_window = tk.Toplevel(root)
-    feedback_window.title("Customer Feedback")
-    feedback_window.geometry("600x400")
+    # Clear any existing content on the main page
+    for widget in root.winfo_children():
+        widget.destroy()
+
+    root.geometry("1280x700")
+
+    # Create a frame for the feedback page
+    feedback_frame = tk.Frame(root)
+    feedback_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+    # Page title
+    tk.Label(feedback_frame, text="Customer Feedback", font=("Arial", 20, "bold")).pack(pady=10)
+
+    # Create a frame for filter controls
+    filter_frame = tk.Frame(feedback_frame)
+    filter_frame.pack(fill=tk.X, padx=10, pady=5)
+
+    # Label for Stars filter
+    tk.Label(filter_frame, text="Filter by Stars:").pack(side=tk.LEFT, padx=5)
+
+    # Dropdown menu for selecting stars
+    star_filter_var = tk.StringVar(value="All")  # Default value
+    star_dropdown = ttk.Combobox(filter_frame, textvariable=star_filter_var, state="readonly")
+    star_dropdown['values'] = ["All", "1", "2", "3", "4", "5"]  # All options for stars
+    star_dropdown.pack(side=tk.LEFT, padx=5)
+
+    # Apply filter button
+    def apply_filter():
+        selected_star = star_filter_var.get()
+
+        # Clear the Treeview
+        for row in feedback_tree.get_children():
+            feedback_tree.delete(row)
+
+        # Filter feedback data
+        filtered_data = (
+            feedback_data if selected_star == "All"
+            else [row for row in feedback_data if int(row[3]) == int(selected_star)]  # Adjusted for Stars index
+        )
+
+        # Insert filtered data into the Treeview
+        for row in filtered_data:
+            feedback_tree.insert("", tk.END, values=row)
+
+    tk.Button(filter_frame, text="Apply Filter", command=apply_filter).pack(side=tk.LEFT, padx=10)
+
+    # Back button to return to admin panel
+    back_button = tk.Button(feedback_frame, text="Back",
+                            command=lambda: [root.destroy(), subprocess.run(["python", "adminpage.py"])],  # Destroy and relaunch adminpage.py
+                            bg="#1572D3",  fg="white", font=("Poppins", 12, "bold"))
+    back_button.pack(side=tk.BOTTOM, pady=10)  # Place it at the bottom of the feedback_frame
 
     # Create a treeview for displaying feedback
-    feedback_tree = ttk.Treeview(feedback_window, columns=("RatingID", "UserID", "Stars", "Comment"), show="headings")
+    feedback_tree = ttk.Treeview(feedback_frame, columns=("RatingID", "UserID", "CarName", "Stars", "Comment", "AdminID", "CarID"), show="headings")
     feedback_tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
     # Define column headings
     feedback_tree.heading("RatingID", text="Rating ID")
     feedback_tree.heading("UserID", text="User ID")
+    feedback_tree.heading("CarName", text="Car Name")
     feedback_tree.heading("Stars", text="Stars")
     feedback_tree.heading("Comment", text="Comment")
+    feedback_tree.heading("AdminID", text="Admin ID")
+    feedback_tree.heading("CarID", text="Car ID")
+
+    feedback_tree.column("RatingID", width=80)
+    feedback_tree.column("UserID", width=80)
+    feedback_tree.column("CarName", width=80)
+    feedback_tree.column("Stars", width=80)
+    feedback_tree.column("Comment", width=300)
+    feedback_tree.column("AdminID", width=80)
+    feedback_tree.column("CarID", width=80)
 
     # Insert rows into the Treeview
     for row in feedback_data:
@@ -1023,10 +1088,12 @@ def display_feedback(feedback_data):
 
 
 
+
+
 # --- MAIN WINDOW SETUP --- #
 root = tk.Tk()
 root.title("Login Page")
-root.geometry('1280x780')
+root.geometry('1200x700')
 
 # Main frame for layout
 main_frame = tk.Frame(root)
@@ -1039,7 +1106,7 @@ login_frame.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
 # Right side image (during login)
 right_frame = tk.Frame(main_frame, bg='#F1F1F1', width=400)
 right_frame.pack(fill=tk.Y, side=tk.RIGHT)
-image_path = r"C:\Users\User\Downloads\WhatsApp Image 2024-09-24 at 23.17.29_16a30ce5.jpg"  # Add your path
+image_path = r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-09-24 200101.png"# Add your path
 image = Image.open(image_path)
 image = ImageTk.PhotoImage(image)
 image_label = tk.Label(right_frame, image=image)
@@ -1154,111 +1221,557 @@ def approve_booking():
         messagebox.showerror("Error", "Please select a booking to approve.")
 
 
-
 def reject_booking():
     selected_item = pending_bookings_tree.selection()  # Get selected item
     if selected_item:
         booking_id = pending_bookings_tree.item(selected_item)["values"][0]  # Get BookingID of selected row
 
-        try:
-            # Connect to the database
-            conn = sqlite3.connect("Carmala.db")
-            cursor = conn.cursor()
+        # Create a new Toplevel window for the rejection reason
+        reason_window = Toplevel()
+        reason_window.title("Enter Rejection Reason")
+        reason_window.geometry("400x300")  # Adjust size as needed
 
-            # Fetch the user email, car name, pickup date, and dropoff date
-            cursor.execute("""
-                SELECT UA.Email, C.CarName, B.PickupDate, B.DropoffDate
-                FROM Booking B
-                JOIN UserAccount UA ON B.UserID = UA.UserID
-                JOIN CarList C ON B.CarID = C.CarID
-                WHERE B.BookingID = ?
-            """, (booking_id,))
-            result = cursor.fetchone()
+        # Add a Text widget (chat box-style) for the admin to type the reason
+        reason_text = Text(reason_window, wrap="word", height=10)
+        reason_text.pack(padx=10, pady=10, expand=True)
 
-            if result:
-                user_email, car_name, pickup_date, dropoff_date = result
+        # Add a button to submit the rejection reason
+        def submit_reason():
+            reason = reason_text.get("1.0", "end-1c").strip()  # Get the text input
+            if not reason:
+                messagebox.showwarning("Input Required", "Rejection reason cannot be empty.")
+                return
 
-                # Convert dates to readable format
-                pickup_date_formatted = pd.to_datetime(pickup_date).strftime("%d %B %Y (%A)")
-                dropoff_date_formatted = pd.to_datetime(dropoff_date).strftime("%d %B %Y (%A)")
+            try:
+                # Connect to the database
+                conn = sqlite3.connect("Carmala.db")
+                cursor = conn.cursor()
 
-                # Insert the booking details into BookingHistory
+                # Fetch the user email, car name, pickup date, and dropoff date
                 cursor.execute("""
-                    INSERT INTO BookingHistory (HistoryID, BookingID, PickupDate, DropoffDate)
-                    SELECT NULL, BookingID, PickupDate, DropoffDate
-                    FROM Booking
-                    WHERE BookingID = ?
+                    SELECT UA.Email, C.CarName, B.PickupDate, B.DropoffDate
+                    FROM Booking B
+                    JOIN UserAccount UA ON B.UserID = UA.UserID
+                    JOIN CarList C ON B.CarID = C.CarID
+                    WHERE B.BookingID = ?
                 """, (booking_id,))
+                result = cursor.fetchone()
 
-                # Delete the booking from the Booking table
-                cursor.execute("DELETE FROM Booking WHERE BookingID = ?", (booking_id,))
-                conn.commit()
+                if result:
+                    user_email, car_name, pickup_date, dropoff_date = result
 
-                # Create the email content
-                subject = "Booking Rejected"
-                message = f"""
-                Dear Valued Customer,
+                    # Convert dates to readable format
+                    pickup_date_formatted = pd.to_datetime(pickup_date).strftime("%d %B %Y (%A)")
+                    dropoff_date_formatted = pd.to_datetime(dropoff_date).strftime("%d %B %Y (%A)")
 
-                We regret to inform you that your booking has been rejected.
+                    # Update the BookingStatus in the Booking table to 'Rejected'
+                    cursor.execute("UPDATE Booking SET BookingStatus = 'Rejected' WHERE BookingID = ?", (booking_id,))
+                    conn.commit()
 
-                **Booking Details:**
-                - Car: {car_name}
-                - Pickup Date: {pickup_date_formatted}
-                - Dropoff Date: {dropoff_date_formatted}
-                - Status: Rejected
+                    # Create the email content
+                    subject = "Booking Rejected"
+                    message = f"""
+                    Dear Valued Customer,
 
-                If you have any questions or need assistance, please contact our support team.
+                    We regret to inform you that your booking has been rejected.
 
-                Best regards,
-                Carmala Team
-                """
+                    *Booking Details:*
+                    - Car: {car_name}
+                    - Pickup Date: {pickup_date_formatted}
+                    - Dropoff Date: {dropoff_date_formatted}
+                    - Status: Rejected
 
-                # Send email notification
-                send_email_notification(user_email, subject, message)
+                    *Reason for Rejection:*
+                    {reason}
 
-                messagebox.showinfo("Success", "Booking rejected successfully!")
+                    If you have any questions or need assistance, please contact our support team.
 
-            else:
-                messagebox.showerror("Error", "User email or car details not found.")
+                    Best regards,
+                    Carmala Team
+                    """
 
-        except sqlite3.Error as e:
-            messagebox.showerror("Database Error", f"An error occurred: {e}")
+                    # Send email notification
+                    send_email_notification(user_email, subject, message)
 
-        finally:
-            conn.close()
+                    # Refresh the pending bookings list
+                    display_pending_bookings()
+                    messagebox.showinfo("Success", "Booking rejected successfully!")
+
+                    reason_window.destroy()  # Close the reason input window
+                else:
+                    messagebox.showerror("Error", "User email or car details not found.")
+
+            except sqlite3.Error as e:
+                messagebox.showerror("Database Error", f"An error occurred: {e}")
+
+            finally:
+                conn.close()
+
+        # Add a button to submit the reason and process the rejection
+        submit_button = Button(reason_window, text="Submit Rejection", command=submit_reason)
+        submit_button.pack(pady=10)
+
+    else:
+        messagebox.showerror("Error", "Please select a booking to reject.")
 
 
 
+# Function to handle double-click event on pending bookings
+def on_pending_booking_double_click(event):
+    # Get selected item
+    selected_item = pending_bookings_tree.selection()
+    if not selected_item:
+        return
+
+    booking_id = pending_bookings_tree.item(selected_item, 'values')[0]
+    user_id = pending_bookings_tree.item(selected_item, 'values')[1]
+
+    display_user_details(user_id)  # Call the function to display user details
+
+
+
+# Function to handle double-click event on pending bookings
+def on_pending_booking_double_click(event):
+    # Get selected item
+    selected_item = pending_bookings_tree.selection()
+    if not selected_item:
+        return
+
+    booking_id = pending_bookings_tree.item(selected_item, 'values')[0]  # Getting BookingID
+    user_id = pending_bookings_tree.item(selected_item, 'values')[1]  # Getting UserID
+
+    display_user_details(user_id)  # Call the function to display user details
+
+# Function to display user details in a new window
+def display_user_details(user_id):
+    try:
+        conn = sqlite3.connect("Carmala.db")  # Replace with your actual DB path
+        cursor = conn.cursor()
+
+        # Query to fetch user details by UserID
+        cursor.execute("""
+            SELECT UserName, IdentificationNumber, DrivingLicense, ProfilePicture, 
+                   Email, Country, Gender
+            FROM UserAccount
+            WHERE UserID = ?
+        """, (user_id,))
+        user_data = cursor.fetchone()
+
+        if user_data:
+            user_name, id_number, driving_license, profile_picture, email, country, gender = user_data
+
+            # Create a new window to display user details
+            user_window = tk.Toplevel(root)
+            user_window.title(f"User Details - {user_name}")
+            user_window.geometry("600x500")
+
+            # Display the user details
+            tk.Label(user_window, text=f"User Name: {user_name}").pack(pady=5)
+            tk.Label(user_window, text=f"Identification Number: {id_number}").pack(pady=5)
+            tk.Label(user_window, text=f"Email: {email}").pack(pady=5)
+            tk.Label(user_window, text=f"Country: {country}").pack(pady=5)
+            tk.Label(user_window, text=f"Gender: {gender}").pack(pady=5)
+
+            # Display Profile Picture if available
+            if profile_picture:
+                image = Image.open(io.BytesIO(profile_picture))
+                image.thumbnail((150, 150))  # Resize image
+                profile_img = ImageTk.PhotoImage(image)
+
+                profile_label = tk.Label(user_window, image=profile_img)
+                profile_label.image = profile_img  # Keep a reference to the image
+                profile_label.pack(pady=5)
+
+            # Display Driving License Image if available
+            if driving_license:
+                driving_license_img = Image.open(io.BytesIO(driving_license))
+                driving_license_img.thumbnail((150, 150))  # Resize image
+                driving_license_photo = ImageTk.PhotoImage(driving_license_img)
+
+                driving_license_label = tk.Label(user_window, image=driving_license_photo)
+                driving_license_label.image = driving_license_photo  # Keep reference
+                driving_license_label.pack(pady=5)
+
+            # Close button
+            tk.Button(user_window, text="Close", command=user_window.destroy).pack(pady=10)
+
+        else:
+            messagebox.showinfo("No User Data", "No user details found.")
+
+        conn.close()
+
+    except sqlite3.Error as e:
+        messagebox.showerror("Database Error", f"An error occurred: {e}")
+
+# Function to display user details in a new window
+def display_user_details(user_id):
+    try:
+        conn = sqlite3.connect("Carmala.db")
+        cursor = conn.cursor()
+
+        # Query to fetch user details by UserID
+        cursor.execute("""
+            SELECT UserName, IdentificationNumber, DrivingLicense, ProfilePicture, 
+                   Email, Country, Gender
+            FROM UserAccount
+            WHERE UserID = ?
+        """, (user_id,))
+        user_data = cursor.fetchone()
+
+        if user_data:
+            user_name, id_number, driving_license, profile_picture, email, country, gender = user_data
+
+            # Create a new window to display user details
+            user_window = tk.Toplevel(root)
+            user_window.title(f"User Details - {user_name}")
+            user_window.geometry("600x500")
+
+            # Display the user details
+            tk.Label(user_window, text=f"User Name: {user_name}").pack(pady=5)
+            tk.Label(user_window, text=f"Identification Number: {id_number}").pack(pady=5)
+            tk.Label(user_window, text=f"Email: {email}").pack(pady=5)
+            tk.Label(user_window, text=f"Country: {country}").pack(pady=5)
+            tk.Label(user_window, text=f"Gender: {gender}").pack(pady=5)
+
+            # Display Profile Picture if available
+            if profile_picture:
+                image = Image.open(io.BytesIO(profile_picture))
+                image.thumbnail((150, 150))  # Resize image
+                profile_img = ImageTk.PhotoImage(image)
+
+                profile_label = tk.Label(user_window, image=profile_img)
+                profile_label.image = profile_img  # Keep a reference to the image
+                profile_label.pack(pady=5)
+
+            # Display Driving License Image if available
+            if driving_license:
+                driving_license_img = Image.open(io.BytesIO(driving_license))
+                driving_license_img.thumbnail((150, 150))  # Resize image
+                driving_license_photo = ImageTk.PhotoImage(driving_license_img)
+
+                driving_license_label = tk.Label(user_window, image=driving_license_photo)
+                driving_license_label.image = driving_license_photo  # Keep reference
+                driving_license_label.pack(pady=5)
+
+            # Close button
+            tk.Button(user_window, text="Close",  fg="white", font=("Poppins", 12, "bold"),command=user_window.destroy).pack(pady=10)
+
+        else:
+            messagebox.showinfo("No User Data", "No user details found.")
+
+        conn.close()
+
+    except sqlite3.Error as e:
+        messagebox.showerror("Database Error", f"An error occurred: {e}")
+
+def open_manage_users_page():
+    admin_session = Session.get_admin_session()  # Get current admin session
+    if not admin_session or not admin_session.get("SuperAdmin", False):  # Check if Superadmin
+        messagebox.showerror("Access Denied", "Only Superadmin can manage users.")
+        return
+
+    # Create a new window for managing users
+    manage_users_window = tk.Toplevel(root)
+    manage_users_window.title("Manage Users")
+    manage_users_window.geometry("800x600")
+
+    # Create a treeview to display users
+    user_tree = ttk.Treeview(manage_users_window, columns=("UserID", "UserName", "Email", "Country", "Gender"), show="headings")
+    user_tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+    # Bind double-click event to view user details
+    user_tree.bind("<Double-1>", lambda event: on_user_double_click(event, user_tree))
+    user_tree.heading("UserID", text="User ID")
+    user_tree.heading("UserName", text="User Name")
+    user_tree.heading("Email", text="Email")
+    user_tree.heading("Country", text="Country")
+    user_tree.heading("Gender", text="Gender")
+
+    # Fetch and insert user data into the treeview
+    try:
+        conn = sqlite3.connect("Carmala.db")
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT UserID, UserName, Email, Country, Gender FROM UserAccount")
+        users = cursor.fetchall()
+
+        for user in users:
+            user_tree.insert("", tk.END, values=user)
+
+        conn.close()
+    except sqlite3.Error as e:
+        messagebox.showerror("Database Error", f"An error occurred: {e}")
+
+    # Add a "Ban User" button below the treeview
+    ban_button = tk.Button(manage_users_window, text="Ban User",bg="#1572D3", fg="white", font=("Poppins", 12, "bold"), command=lambda: ban_user(user_tree))
+    ban_button.pack(pady=10)
+def on_user_double_click(event, user_tree):
+    # Get the selected item
+    selected_item = user_tree.selection()
+    if not selected_item:
+        messagebox.showwarning("No Selection", "Please select a user to view details.")
+        return
+
+    # Get user data from the selected row
+    user_data = user_tree.item(selected_item, "values")
+    user_id = user_data[0]  # Assuming UserID is the first column
+
+    # Call the function to display user details
+    display_user_details(user_id)
+
+
+
+# Function to ban a user and send an email with the reason
+def ban_user(user_tree):
+    selected_item = user_tree.selection()
+    if not selected_item:
+        messagebox.showwarning("No Selection", "Please select a user to ban.")
+        return
+
+    user_id = user_tree.item(selected_item)['values'][0]  # Getting UserID
+    user_name = user_tree.item(selected_item)['values'][1]  # Getting User Name
+    user_email = user_tree.item(selected_item)['values'][2]  # Getting User Email
+
+    # Create a window with a Text widget for entering ban reason
+    ban_window = tk.Toplevel(root)
+    ban_window.title("Ban User")
+    ban_window.geometry("400x300")
+
+    tk.Label(ban_window, text="Enter the reason for banning the user:").pack(pady=10)
+
+    # Text widget for reason
+    ban_reason_text = tk.Text(ban_window, height=5, width=40)
+    ban_reason_text.pack(pady=10)
+
+    # Submit button to confirm ban
+    submit_button = tk.Button(ban_window, text="Ban User",bg="#1572D3", fg="white", font=("Poppins", 12, "bold"), command=lambda: confirm_ban(user_id, user_name, user_email, ban_reason_text.get("1.0", tk.END), ban_window))
+    submit_button.pack(pady=10)
+
+# Function to confirm the ban and perform actions
+def confirm_ban(user_id, user_name, user_email, ban_reason, ban_window):
+    if not ban_reason.strip():
+        messagebox.showwarning("No Reason", "Please provide a reason for banning the user.")
+        return
+
+    try:
+        # Delete the user record from the database
+        conn = sqlite3.connect("Carmala.db")
+        cursor = conn.cursor()
+
+        cursor.execute("DELETE FROM UserAccount WHERE UserID = ?", (user_id,))
+        conn.commit()
+        conn.close()
+
+        # Send an email to the user
+        send_ban_email(user_email, user_name, ban_reason)
+
+        messagebox.showinfo("User Banned", f"User {user_name} has been banned successfully.")
+
+        # Refresh the user treeview to reflect changes
+        open_manage_users_page()
+
+        ban_window.destroy()
+
+    except sqlite3.Error as e:
+        messagebox.showerror("Database Error", f"An error occurred: {e}")
+
+# Function to send the ban email to the user
+def send_ban_email(user_email, user_name, ban_reason):
+    try:
+        smtp_server = "smtp.gmail.com"
+        smtp_port = 587
+        sender_email = admin_email = "killerpill585@gmail.com"
+        sender_password = "oxey jnwo qybz etmg"
+
+        message = MIMEMultipart()
+        message["Subject"] = "Your Account Has Been Banned"
+        message["From"] = sender_email
+        message["To"] = user_email
+        body = f"Dear {user_name},\n\nYour account has been banned for the following reason:\n\n{ban_reason}\n\nIf you have any questions, please contact support."
+        message.attach(MIMEText(body, "plain"))
+
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()
+        server.login(sender_email, sender_password)
+        server.sendmail(sender_email, user_email, message.as_string())
+        server.quit()
+
+    except Exception as e:
+        messagebox.showerror("Email Error", f"Failed to send ban email: {e}")
+
+def save_chart_as_image(fig):
+    """
+    Save a Matplotlib figure to a PNG image and return as a PIL Image object.
+    """
+    buf = io.BytesIO()
+    fig.savefig(buf, format='png', dpi=100)
+    buf.seek(0)
+    return Image.open(buf)
+
+
+def print_charts_to_pdf():
+    """
+    Generate a PDF report including the charts and allow the user to save it.
+    """
+    try:
+        # Open a Save As dialog for the user to choose the file location
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".pdf",
+            filetypes=[("PDF Files", "*.pdf")],
+            title="Save Report As"
+        )
+        if not file_path:
+            return  # User canceled the dialog
+
+        # Initialize a PDF canvas
+        c = canvas.Canvas(file_path, pagesize=letter)
+
+        # Add title to the PDF
+        c.setFont("Helvetica-Bold", 16)
+        c.drawString(200, 750, "Admin Dashboard Report")
+
+        y_position = 700  # Initial Y position for the first chart
+
+        # Booking Statistics Chart
+        total, approved, rejected = get_statistics_data()
+        fig1 = Figure(figsize=(4, 3), dpi=100)
+        ax1 = fig1.add_subplot(111)
+        labels = ['Total', 'Approved', 'Rejected']
+        values = [total, approved, rejected]
+        colors = ['#4CAF50', '#2196F3', '#F44336']
+        bars = ax1.bar(labels, values, color=colors)
+        ax1.set_title("Booking Statistics")
+        ax1.set_ylabel("Number of Bookings")
+        for bar in bars:
+            height = bar.get_height()
+            ax1.annotate(f'{int(height)}', xy=(bar.get_x() + bar.get_width() / 2, height),
+                         xytext=(0, 3), textcoords="offset points", ha='center', va='bottom')
+        img1 = save_chart_as_image(fig1)
+        img1.save("booking_chart_temp.png")  # Save image temporarily
+        c.drawImage("booking_chart_temp.png", 50, y_position - 300, width=400, height=300)
+        y_position -= 350
+
+        # Revenue Statistics Chart
+        total_revenue, monthly_revenue = get_revenue_statistics()
+        fig2 = Figure(figsize=(4, 3), dpi=100)
+        ax2 = fig2.add_subplot(111)
+        months = [row[0] for row in monthly_revenue]
+        revenues = [row[1] for row in monthly_revenue]
+        colors = ['#FFD700' for _ in months]
+        bars = ax2.bar(months, revenues, color=colors)
+        ax2.set_title("Revenue Statistics")
+        ax2.set_xlabel("Month")
+        ax2.set_ylabel("Revenue ($)")
+        ax2.tick_params(axis='x', rotation=45, labelsize=8)
+        for bar in bars:
+            height = bar.get_height()
+            ax2.annotate(f'${int(height):,}', xy=(bar.get_x() + bar.get_width() / 2, height),
+                         xytext=(0, 3), textcoords="offset points", ha='center', va='bottom')
+        img2 = save_chart_as_image(fig2)
+        img2.save("revenue_chart_temp.png")  # Save image temporarily
+        c.drawImage("revenue_chart_temp.png", 50, y_position - 300, width=400, height=300)
+        y_position -= 350
+
+        # Car Usage Distribution Pie Chart
+        labels, data = get_car_usage_data()
+        if labels and data:
+            fig3 = Figure(figsize=(5, 3), dpi=100)  # Wider for pie chart legend
+            ax3 = fig3.add_subplot(111)
+            colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4CAF50', '#2196F3', '#F44336']
+            while len(colors) < len(labels):
+                colors.append("#" + "".join(random.choice("0123456789ABCDEF") for _ in range(6)))
+            wedges, texts, autotexts = ax3.pie(data, labels=None, autopct='%1.0f%%', startangle=90, colors=colors)
+            ax3.legend(handles=[Patch(facecolor=colors[i], label=labels[i]) for i in range(len(labels))],
+                       title="Cars", loc='center left', bbox_to_anchor=(1, 0.5))
+            ax3.set_title("Car Usage Distribution")
+            img3 = save_chart_as_image(fig3)
+            img3.save("car_usage_chart_temp.png")  # Save image temporarily
+            c.drawImage("car_usage_chart_temp.png", 50, y_position - 300, width=400, height=300)
+
+        # Save the PDF and clean up
+        c.save()
+        messagebox.showinfo("Success", f"Report saved as {file_path}")
+
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to generate PDF: {str(e)}")
+
+
+# --- PENDING BOOKINGS PAGE --- #
+pending_bookings_frame = tk.Frame(main_frame, bg='#F1F1F1')
+back_button = tk.Button(pending_bookings_frame, text="Back", command=lambda: [pending_bookings_frame.pack_forget(), admin_frame.pack(fill=tk.BOTH, expand=True)], bg="#1572D3", fg="white", font=("Poppins", 12, "bold"))
+back_button.pack(pady=10)
+
+# Define columns for the Pending Bookings Treeview
+pending_bookings_columns = ("BookingID", "UserID", "CarID", "CarName", "PickupDate", "DropoffDate", "BookingStatus")
+pending_bookings_tree = ttk.Treeview(pending_bookings_frame, columns=pending_bookings_columns, show="headings")
+pending_bookings_tree.heading("BookingID", text="Booking ID")
+pending_bookings_tree.heading("UserID", text="User ID")
+pending_bookings_tree.heading("CarID", text="Car ID")
+pending_bookings_tree.heading("CarName", text="Car Name")
+pending_bookings_tree.heading("PickupDate", text="Pickup Date")
+pending_bookings_tree.heading("DropoffDate", text="Dropoff Date")
+pending_bookings_tree.heading("BookingStatus", text="Booking Status")
+
+# Define column widths
+pending_bookings_tree.column("BookingID", width=100)
+pending_bookings_tree.column("UserID", width=100)
+pending_bookings_tree.column("CarID", width=100)
+pending_bookings_tree.column("PickupDate", width=100)
+pending_bookings_tree.column("DropoffDate", width=100)
+pending_bookings_tree.column("BookingStatus", width=100)
+
+# Pack the Treeview into the pending bookings frame
+pending_bookings_tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+pending_bookings_tree.bind("<Double-1>", on_pending_booking_double_click)
 
 # --- ADMIN PANEL --- #
 admin_frame = tk.Frame(main_frame, bg='#F1F1F1')
-
-label_admin_welcome = tk.Label(admin_frame, text="Welcome, Admin!", font=("Poppins", 24, "bold"), bg='#F1F1F1')
-label_admin_welcome.pack(pady=20)
 
 admin_image_label = tk.Label(admin_frame)
 admin_image_label.pack(fill=tk.BOTH, expand=True)
 
 # Admin panel buttons
+button_pending_bookings = tk.Button(admin_frame,bg="#28A1F8",fg = "white", text="Pending Bookings", font=("Poppins", 12, "bold"), command=display_pending_bookings)
+button_pending_bookings.bind("<Enter>", lambda event: on_hover(button_pending_bookings, "#1058A7"))
+button_pending_bookings.bind("<Leave>", lambda event: on_leave(button_pending_bookings, "#28A1F8"))
 
-button_pending_bookings = tk.Button(admin_frame, text="Pending Bookings", font="Poppins", command=display_pending_bookings)
-button_feedback = tk.Button(admin_frame, text="Customer Feedback", font="Poppins", command=open_feedback_page)
-button_manage_cars = tk.Button(admin_frame, text="Show Cars", font="Poppins", command=display_car_availability)
-button_agencies = tk.Button(admin_frame, text="Agencies", font="Poppins", command=display_agencies_frame)
+button_feedback = tk.Button(admin_frame, bg="#28A1F8",fg = "white",text="Customer Feedback", font=("Poppins", 12, "bold"), command=open_feedback_page)
+button_feedback.bind("<Enter>", lambda event: on_hover(button_feedback, "#1058A7"))
+button_feedback.bind("<Leave>", lambda event: on_leave(button_feedback, "#28A1F8"))
+
+button_manage_cars = tk.Button(admin_frame, bg="#28A1F8",fg = "white",text="Show Cars", font=("Poppins", 12, "bold"), command=display_car_availability)
+button_manage_cars.bind("<Enter>", lambda event: on_hover(button_manage_cars, "#1058A7"))
+button_manage_cars.bind("<Leave>", lambda event: on_leave(button_manage_cars, "#28A1F8"))
+
+button_agencies = tk.Button(admin_frame, bg="#28A1F8",fg = "white",text="Agencies", font=("Poppins", 12, "bold"), command=display_agencies_frame)
+button_agencies.bind("<Enter>", lambda event: on_hover(button_agencies, "#1058A7"))
+button_agencies.bind("<Leave>", lambda event: on_leave(button_agencies, "#28A1F8"))
+
+button_manage_users  = tk.Button(admin_frame, bg="#28A1F8",fg = "white",text="Manage Users", font=("Poppins", 12, "bold"), command=open_manage_users_page)
+button_manage_users .bind("<Enter>", lambda event: on_hover(button_manage_users , "#1058A7"))
+button_manage_users .bind("<Leave>", lambda event: on_leave(button_manage_users , "#28A1F8"))
+
+button_print= tk.Button(admin_frame, text="Print Report",bg="#28A1F8",fg = "white", font=("Poppins", 12, "bold"), command=print_charts_to_pdf)
+button_manage_users .bind("<Enter>", lambda event: on_hover(button_manage_users , "#1058A7"))
+button_manage_users .bind("<Leave>", lambda event: on_leave(button_manage_users , "#28A1F8"))
 
 
-logout_button = tk.Button(admin_frame, text="Logout", command=logout)
-logout_button.place(x=65, y=680, width=180, height=40)
+
+logout_button = tk.Button(admin_frame,bg="#28A1F8",fg = "white", text="Logout", font=("Poppins", 12, "bold"), command=logout)
+logout_button.bind("<Enter>", lambda event: on_hover(logout_button, "#1058A7"))
+logout_button.bind("<Leave>", lambda event: on_leave(logout_button, "#28A1F8"))
+logout_button.place(x=10, y=640, width=180, height=40)
+
+
 
 # --- CAR AVAILABILITY PAGE --- #
 car_availability_frame = tk.Frame(main_frame, bg='#F1F1F1')
-back_button = tk.Button(car_availability_frame, text="Back", command=lambda: [car_availability_frame.pack_forget(), admin_frame.pack(fill=tk.BOTH, expand=True)], bg="#1572D3", font="Poppins")
+back_button = tk.Button(car_availability_frame, text="Back", command=lambda: [car_availability_frame.pack_forget(), admin_frame.pack(fill=tk.BOTH, expand=True)], bg="#1572D3", fg="white", font=("Poppins", 12, "bold"))
 back_button.pack(pady=10)
-add_car_button = tk.Button(car_availability_frame, text="Add Car", command=open_add_car_form, bg="#1572D3", font="Poppins")
+add_car_button = tk.Button(car_availability_frame, text="Add Car", command=open_add_car_form, bg="#1572D3", fg="white", font=("Poppins", 12, "bold"))
 add_car_button.pack(pady=10)
 
 # Edit car button in the Car Availability frame (adjust size and color)
-button_edit_car = tk.Button(car_availability_frame,text="Edit Car",font=("Poppins", 14),bg="green", fg="white",command=lambda: open_edit_car_form())
+button_edit_car = tk.Button(car_availability_frame,text="Edit Car",font=("Poppins", 12, "bold"),bg="green", fg="white",command=lambda: open_edit_car_form())
 button_edit_car.pack(pady=10)
 
 
@@ -1266,7 +1779,7 @@ button_edit_car.pack(pady=10)
 car_columns = ("CarID", "CarName", "CarLocation", "CarCapacity","CarFueltype","CarTransmission","CarFeatures","CarPrice","CarImage","AdminID")
 car_tree = ttk.Treeview(car_availability_frame, columns=car_columns, show="headings")
 # Add a delete button in the car_availability_frame
-delete_button = tk.Button(car_availability_frame, text="Delete Selected", command=delete_selected_row, bg="#FF6347", font="Poppins")
+delete_button = tk.Button(car_availability_frame, text="Delete Selected", command=delete_selected_row, bg="#FF6347", fg="white", font=("Poppins", 12, "bold"))
 delete_button.pack(pady=10)
 
 car_tree.heading("CarID", text="Car ID")
@@ -1296,17 +1809,17 @@ car_tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
 # --- AGENCIES PAGE --- #
 agencies_frame = tk.Frame(main_frame, bg='#F1F1F1')
-back_button = tk.Button(agencies_frame, text="Back", command=lambda: [agencies_frame.pack_forget(), admin_frame.pack(fill=tk.BOTH, expand=True)], bg="#1572D3", font="Poppins")
+back_button = tk.Button(agencies_frame, text="Back", command=lambda: [agencies_frame.pack_forget(), admin_frame.pack(fill=tk.BOTH, expand=True)], bg="#1572D3", fg="white", font=("Poppins", 12, "bold"))
 back_button.pack(pady=10)
 agencies_frame = tk.Frame(main_frame, bg='#F1F1F1')
-back_button = tk.Button(agencies_frame, text="Back", command=lambda: [agencies_frame.pack_forget(), admin_frame.pack(fill=tk.BOTH, expand=True)], bg="#1572D3", font="Poppins")
+back_button = tk.Button(agencies_frame, text="Back", command=lambda: [agencies_frame.pack_forget(), admin_frame.pack(fill=tk.BOTH, expand=True)], bg="#1572D3", fg="white", font=("Poppins", 12, "bold"))
 back_button.pack(pady=10)
 
 # Delete Button for agencies
-delete_agency_button = tk.Button(agencies_frame, text="Delete Selected", command=delete_selected_agency, bg="#FF6347", font="Poppins")
+delete_agency_button = tk.Button(agencies_frame, text="Delete Selected", command=delete_selected_agency, bg="#FF6347",fg="white", font=("Poppins", 12, "bold"))
 delete_agency_button.pack(pady=10)
 # Add Button for agencies
-add_agency_button = tk.Button(agencies_frame, text="Add New Agency", command=open_add_agency_form, bg="#32CD32", font="Poppins")
+add_agency_button = tk.Button(agencies_frame, text="Add New Agency", command=open_add_agency_form, bg="#32CD32",fg="white", font=("Poppins", 12, "bold"))
 add_agency_button.pack(pady=10)
 
 # Separate Treeview for agencies
@@ -1322,48 +1835,7 @@ agency_tree.column("AdminPassword", width=100)
 agency_tree.column("AdminEmail", width=100)
 
 agency_tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-# --- BOOKING HISTORY PAGE --- #
-booking_history_frame = tk.Frame(main_frame, bg='#F1F1F1')
-back_button = tk.Button(booking_history_frame, text="Back", command=lambda: [booking_history_frame.pack_forget(), admin_frame.pack(fill=tk.BOTH, expand=True)], bg="#1572D3", font="Poppins")
-back_button.pack(pady=10)
 
-# Define columns for the Booking History Treeview to match your table structure
-booking_columns = ("HistoryID", "BookingID", "PickupDate", "DropoffDate")
-booking_tree = ttk.Treeview(booking_history_frame, columns=booking_columns, show="headings")
-
-# Define column headers for the new structure
-booking_tree.heading("HistoryID", text="Booking ID")
-booking_tree.heading("BookingID", text="Booking ID")
-booking_tree.heading("PickupDate", text="Pick-Up Date")
-booking_tree.heading("DropoffDate", text="Drop-Off Date")
-
-
-# Define column widths
-booking_tree.column("HistoryID", width=100)
-booking_tree.column("BookingID", width=120)
-booking_tree.column("PickupDate", width=120)
-booking_tree.column("DropoffDate", width=120)
-
-
-# Pack the treeview into the booking history frame
-booking_tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-
-
-# --- PENDING BOOKINGS PAGE --- #
-pending_bookings_frame = tk.Frame(main_frame, bg='#F1F1F1')
-back_button = tk.Button(pending_bookings_frame, text="Back", command=lambda: [pending_bookings_frame.pack_forget(), admin_frame.pack(fill=tk.BOTH, expand=True)], bg="#1572D3", font="Poppins")
-back_button.pack(pady=10)
-
-# Define columns for the Pending Bookings Treeview
-pending_bookings_columns = ("BookingID", "UserID", "CarID","CarName", "PickupDate", "DropoffDate", "BookingStatus")
-pending_bookings_tree = ttk.Treeview(pending_bookings_frame, columns=pending_bookings_columns, show="headings")
-pending_bookings_tree.heading("BookingID", text="Booking ID")
-pending_bookings_tree.heading("UserID", text="User ID")
-pending_bookings_tree.heading("CarID", text="Car ID")
-pending_bookings_tree.heading("CarName", text="Car Name")
-pending_bookings_tree.heading("PickupDate", text="Pickup Date")
-pending_bookings_tree.heading("DropoffDate", text="Dropoff Date")
-pending_bookings_tree.heading("BookingStatus", text="Booking Status")
 
 # Define column widths
 pending_bookings_tree.column("BookingID", width=100)
@@ -1377,10 +1849,10 @@ pending_bookings_tree.column("BookingStatus", width=100)
 pending_bookings_tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
 # Approve and Reject buttons
-approve_button = tk.Button(pending_bookings_frame, text="Approve Booking", command=approve_booking, bg="green", font="Poppins", fg="white")
+approve_button = tk.Button(pending_bookings_frame, text="Approve Booking", command=approve_booking, bg="green", font=("Poppins", 12, "bold"), fg="white")
 approve_button.pack(side=tk.LEFT, padx=20, pady=10)
 
-reject_button = tk.Button(pending_bookings_frame, text="Reject Booking", command=reject_booking, bg="red", font="Poppins", fg="white")
+reject_button = tk.Button(pending_bookings_frame, text="Reject Booking", command=reject_booking, bg="red", font=("Poppins", 12, "bold"), fg="white")
 reject_button.pack(side=tk.LEFT, padx=20, pady=10)
 
 # Update the "Pending Bookings" button to call this function

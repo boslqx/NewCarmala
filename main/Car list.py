@@ -57,9 +57,10 @@ def get_available_cars(location, pickup_date, return_date):
             WHERE LOWER(c.CarLocation) = LOWER(?)
               AND (
                   b.BookingID IS NULL OR  -- No booking for this car
-                  NOT (b.PickupDate <= ? AND b.DropoffDate >= ?)  -- Booking overlaps with the requested dates
+                  NOT (b.PickupDate <= ? AND b.DropoffDate >= ?) OR  -- Booking overlaps with the requested dates
+                  (b.PickupDate <= ? AND b.DropoffDate >= ? AND b.BookingStatus = 'Rejected')  -- Booking is rejected
               )
-        ''', (location, return_date, pickup_date))  # Pass return_date first, then pickup_date for overlap check
+        ''', (location, return_date, pickup_date, return_date, pickup_date))  # Pass return_date first, then pickup_date for overlap check
 
         available_cars = cursor.fetchall()
         print(f"Available cars: {available_cars}")
@@ -74,26 +75,41 @@ def get_available_cars(location, pickup_date, return_date):
 # Functionality for the Search button
 def search_action():
     location = location_entry.get().strip()  # Trim any leading/trailing spaces
-    pickup_date = pickup_date_entry.get_date().strftime('%Y-%m-%d')
-    return_date = return_date_entry.get_date().strftime('%Y-%m-%d')
+    pickup_date = pickup_date_entry.get_date()
+    return_date = return_date_entry.get_date()
+    current_date = datetime.now().date()  # Get today's date
+
     print(f"Pickup Date: {pickup_date}, Dropoff Date: {return_date}")
 
-
-    # Simple validation to ensure the fields are not empty
+    # Validate fields are not empty
     if not location or not pickup_date or not return_date:
         messagebox.showwarning("Input Error", "Please fill all the fields.")
-    else:
-        # Call get_available_cars with the correct arguments
-        try:
-            # Pass pickup_date_str and return_date_str directly
-            available_cars = get_available_cars(location, pickup_date, return_date)
-            if not available_cars:
-                messagebox.showinfo("No Cars Available", f"No cars available in {location} during the selected dates.")
-            else:
-                # Call filter_car_data() to update car display based on new criteria
-                filter_car_data()
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to open car list: {str(e)}")
+        return
+
+    # Date validation
+    if pickup_date < current_date:
+        messagebox.showerror("Invalid Pickup Date", "Pickup date cannot be in the past.")
+        return
+
+    if return_date < pickup_date:
+        messagebox.showerror("Invalid Return Date", "Return date cannot be earlier than the pickup date.")
+        return
+
+    if return_date < current_date:
+        messagebox.showerror("Invalid Return Date", "Return date cannot be in the past.")
+        return
+
+    # Call get_available_cars if all validations pass
+    try:
+        available_cars = get_available_cars(location, pickup_date.strftime('%Y-%m-%d'), return_date.strftime('%Y-%m-%d'))
+        if not available_cars:
+            messagebox.showinfo("No Cars Available", f"No cars available in {location} during the selected dates.")
+        else:
+            # Call filter_car_data() to update car display based on new criteria
+            filter_car_data()
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to open car list: {str(e)}")
+
 
 
 
@@ -171,15 +187,16 @@ def fetch_car_data(capacity_filter=None, transmission_filter=None, features_filt
     if pickup_date and dropoff_date:
         params.extend([pickup_date, dropoff_date])  # Correct order: pickup_date, dropoff_date
     else:
-        # If no date filters are provided, exclude them from the query
         query = """
             SELECT DISTINCT c.CarID, c.CarName, c.CarLocation, c.CarCapacity, c.CarFueltype,
                             c.CarTransmission, c.CarFeatures, c.CarPrice, c.CarImage, c.AdminID, 
                             c.CarColour, c.CarType
             FROM CarList AS c
             LEFT JOIN Booking AS b ON c.CarID = b.CarID
-            WHERE b.BookingID IS NULL OR NOT EXISTS (
-                SELECT 1 FROM Booking AS b2 WHERE b2.CarID = c.CarID
+            WHERE (
+                b.BookingID IS NULL OR  -- Include cars with no bookings
+                NOT (b.PickupDate <= ? AND b.DropoffDate >= ?) OR  -- Exclude cars with overlapping bookings
+                (b.PickupDate <= ? AND b.DropoffDate >= ? AND b.BookingStatus = 'Rejected')  -- Include cars with rejected bookings
             )
         """
 
@@ -561,6 +578,7 @@ root = tk.Tk()
 root.title("Car List")
 root.config(bg="white")
 root.geometry("1120x700")
+root.resizable(False, False)
 
 # Create a canvas to hold the background and other widgets in the Home tab
 canvas = tk.Canvas(root, width=1200, height=700)
