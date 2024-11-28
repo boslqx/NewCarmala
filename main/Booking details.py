@@ -614,7 +614,7 @@ def open_payment_page(selected_bookings, total_price):
         width, height = letter
 
         # Add logo at the top left
-        logo_path = r"C:\Users\User\OneDrive\Pictures\Saved Pictures\cleaned_image.png"
+        logo_path = "Carmala cars/logo.png"
         if os.path.exists(logo_path):
             logo = ImageReader(logo_path)
             c.drawImage(logo, 30, height - 100, width=80, height=80, mask='auto')
