@@ -93,7 +93,7 @@ def open_admin_panel():
     right_frame.pack_forget()
 
     # Load and set admin-specific image background
-    admin_image_path = r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-11-21 194312.png"
+    admin_image_path = r"C:\Carmala cars\admin bg.png"
     admin_image = Image.open(admin_image_path)
     admin_image = admin_image.resize((1200, 700), Image.LANCZOS)
     admin_photo = ImageTk.PhotoImage(admin_image)
@@ -1106,7 +1106,7 @@ login_frame.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
 # Right side image (during login)
 right_frame = tk.Frame(main_frame, bg='#F1F1F1', width=400)
 right_frame.pack(fill=tk.Y, side=tk.RIGHT)
-image_path = r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-09-24 200101.png"# Add your path
+image_path = r"C:\Carmala cars\login bg.png"
 image = Image.open(image_path)
 image = ImageTk.PhotoImage(image)
 image_label = tk.Label(right_frame, image=image)

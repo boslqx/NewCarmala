@@ -60,13 +60,13 @@ canvas.create_window(50, 40, anchor="nw", window=home_button)
 
 # Load the images
 image_paths = [
-    r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-09-29 212411.png",
-    r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-09-29 212422.png",
-    r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-09-29 212430.png",
-    r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-09-29 212442.png",
-    r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-09-29 212456.png",
-    r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-09-29 212503.png",
-    r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-09-29 212510.png"
+    r"C:\Carmala cars\how it works 1.png",
+    r"C:\Carmala cars\how it works 2.png",
+    r"C:\Carmala cars\how it works 3.png",
+    r"C:\Carmala cars\how it works 4.png",
+    r"C:\Carmala cars\how it works 5.png",
+    r"C:\Carmala cars\how it works 6.png",
+    r"C:\Carmala cars\how it works 7.png"
 ]
 
 loaded_images = []

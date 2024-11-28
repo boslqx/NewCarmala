@@ -470,13 +470,13 @@ def on_leave(button, color):
 # Create main application window
 root = tk.Tk()
 root.title("Car Rental Service")
-root.geometry("1200x700")  # Adjust window size to fit the design
+root.geometry("1200x700")
 root.resizable(False, False)
 
 # Load and set the background image in the Home tab
-background_image_path = r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-10-17 095826.png"  # Your background image path
+background_image_path = r"C:\Carmala cars\home bg.png"
 bg_image = Image.open(background_image_path)
-bg_image = bg_image.resize((1200, 700), Image.LANCZOS)  # Resize to fit the window using LANCZOS filter
+bg_image = bg_image.resize((1200, 700), Image.LANCZOS)
 bg_photo = ImageTk.PhotoImage(bg_image)
 
 # Create a canvas to hold the background and other widgets in the Home tab
@@ -517,14 +517,14 @@ logout_button.bind("<Leave>", lambda event: on_leave(logout_button, "#1572D3"))
 canvas.create_window(1100, 40, anchor="nw", window=logout_button)
 
 # Load images for buttons
-chat_image_path = r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-11-19 163838.png"
-rateus_image_path = r"C:\Users\User\OneDrive\Pictures\Screenshots\屏幕截图 2024-11-19 164055.png"
+chat_image_path = r"C:\Carmala cars\chat box button.png"
+rateus_image_path = r"C:\Carmala cars\rate button.jpg"
 
 chat_image = Image.open(chat_image_path)
-chat_photo = ImageTk.PhotoImage(chat_image.resize((120, 120)))  # Resize as needed
+chat_photo = ImageTk.PhotoImage(chat_image.resize((120, 120)))
 
 rateus_image = Image.open(rateus_image_path)
-rateus_photo = ImageTk.PhotoImage(rateus_image.resize((180, 110)))  # Resize as needed
+rateus_photo = ImageTk.PhotoImage(rateus_image.resize((180, 110)))
 
 # Create Chat with Us button using image
 chat_button = tk.Button(
