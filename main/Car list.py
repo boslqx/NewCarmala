@@ -603,7 +603,7 @@ canvas.create_window(1000, 610, anchor="nw", window=next_button)
 
 
 # Add logo image to the canvas and make it a clickable button
-logo_path = r"C:\Users\User\OneDrive\Pictures\Saved Pictures\cleaned_image.png"
+logo_path = "Carmala cars/logo.png"
 logo_img = Image.open(logo_path)
 logo_img = logo_img.resize((150, 100), Image.LANCZOS)
 logo_photo = ImageTk.PhotoImage(logo_img)
