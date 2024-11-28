@@ -367,7 +367,7 @@ login_frame.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
 
 # Create a frame for image on the right
 right_frame = tk.Frame(main_frame, bg='#F1F1F1', width=400)
-image_path = r"C:\Carmala cars\login bg.png"
+image_path = "Carmala cars/login bg.png"
 image = Image.open(image_path)
 image = ImageTk.PhotoImage(image)
 

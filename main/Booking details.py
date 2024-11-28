@@ -370,7 +370,7 @@ def open_payment_page(selected_bookings, total_price):
     print("Selected bookings in payment page:", selected_bookings)
 
     # Background image setup
-    image_path = r"C:\Carmala cars\payment bg.png"
+    image_path = "Carmala cars/payment bg.png"
     bg_image = Image.open(image_path)
     bg_image = bg_image.resize((910, 760), Image.LANCZOS)
     bg_photo = ImageTk.PhotoImage(bg_image)

@@ -60,13 +60,13 @@ canvas.create_window(50, 40, anchor="nw", window=home_button)
 
 # Load the images
 image_paths = [
-    r"C:\Carmala cars\how it works 1.png",
-    r"C:\Carmala cars\how it works 2.png",
-    r"C:\Carmala cars\how it works 3.png",
-    r"C:\Carmala cars\how it works 4.png",
-    r"C:\Carmala cars\how it works 5.png",
-    r"C:\Carmala cars\how it works 6.png",
-    r"C:\Carmala cars\how it works 7.png"
+    "Carmala cars/how it works 1.png",
+    "Carmala cars/how it works 2.png",
+    "Carmala cars/how it works 3.png",
+    "Carmala cars/how it works 4.png",
+    "Carmala cars/how it works 5.png",
+    "Carmala cars/how it works 6.png",
+    "Carmala cars/how it works 7.png"
 ]
 
 loaded_images = []
