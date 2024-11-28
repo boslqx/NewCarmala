@@ -474,7 +474,7 @@ root.geometry("1200x700")
 root.resizable(False, False)
 
 # Load and set the background image in the Home tab
-background_image_path = r"C:\Carmala cars\home bg.png"
+background_image_path = "Carmala cars/home bg.png"
 bg_image = Image.open(background_image_path)
 bg_image = bg_image.resize((1200, 700), Image.LANCZOS)
 bg_photo = ImageTk.PhotoImage(bg_image)
@@ -517,8 +517,8 @@ logout_button.bind("<Leave>", lambda event: on_leave(logout_button, "#1572D3"))
 canvas.create_window(1100, 40, anchor="nw", window=logout_button)
 
 # Load images for buttons
-chat_image_path = r"C:\Carmala cars\chat box button.png"
-rateus_image_path = r"C:\Carmala cars\rate button.jpg"
+chat_image_path = "Carmala cars/chat box button.png"
+rateus_image_path = "Carmala cars/rate button.jpg"
 
 chat_image = Image.open(chat_image_path)
 chat_photo = ImageTk.PhotoImage(chat_image.resize((120, 120)))
