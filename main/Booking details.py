@@ -24,7 +24,7 @@ if logged_in_user:
     print(f"Logged in user ID: {user_id}")
 else:
     print("No user is logged in.")
-    user_id = None  # Set user_id to None if no user is logged in
+    user_id = None
 
 # Functions to fetch booking details
 def fetch_booking_details(logged_in_user_id, order_by="BookingDate DESC", status_filter=None):
@@ -231,15 +231,15 @@ def proceed_to_payment(treeview):
     # Debugging: Log selected bookings
     print("Selected bookings:", selected_bookings)
 
-    total_price = 0  # Initialize total price
-    valid_bookings = []  # To store bookings that can proceed to payment
+    total_price = 0
+    valid_bookings = []
 
     for booking in selected_bookings:
-        booking_id = booking[0]  # BookingID is at index 0
-        booking_status = booking[6]  # BookingStatus is at index 6
-        car_price = float(booking[5])  # CarPrice is at index 5
-        pickup_date = datetime.strptime(booking[1], "%Y-%m-%d")  # PickupDate is at index 1
-        dropoff_date = datetime.strptime(booking[2], "%Y-%m-%d")  # DropoffDate is at index 2
+        booking_id = booking[0]
+        booking_status = booking[6]
+        car_price = float(booking[5])
+        pickup_date = datetime.strptime(booking[1], "%Y-%m-%d")
+        dropoff_date = datetime.strptime(booking[2], "%Y-%m-%d")
 
         # Validate booking status
         if booking_status in ["Pending", "Rejected", "Paid"]:
@@ -396,11 +396,11 @@ def open_payment_page(selected_bookings, total_price):
     # Display car images, details, and price calculations side by side
     for booking in selected_bookings:
         try:
-            car_name = booking[4]  # Car Name
-            car_price = float(booking[5])  # Car Price
-            pickup_date = booking[1]  # Pickup Date
-            dropoff_date = booking[2]  # Dropoff Date
-            car_image = booking[10]  # Car Image (added in the query)
+            car_name = booking[4]
+            car_price = float(booking[5])
+            pickup_date = booking[1]
+            dropoff_date = booking[2]
+            car_image = booking[10]
 
             # Calculate booking duration
             pickup_date_formatted = datetime.strptime(pickup_date, "%Y-%m-%d")
@@ -423,7 +423,7 @@ def open_payment_page(selected_bookings, total_price):
 
                 # Create and display the image in the UI
                 image_label = tk.Label(image_frame, image=photo, bg="#FFFFFF")
-                image_label.image = photo  # Keep reference to avoid garbage collection
+                image_label.image = photo
                 image_label.pack()
             else:
                 tk.Label(image_frame, text="No Image Available", font=("Arial", 12), bg="#FFFFFF").pack()
@@ -494,8 +494,8 @@ def open_payment_page(selected_bookings, total_price):
             card_window.title("Enter Card Details")
             card_window.geometry("400x250")
             card_window.resizable(False, False)
-            card_window.transient(payment_window)  # Keep the pop-up on top of the payment page
-            card_window.grab_set()  # Make the pop-up modal (blocks interaction with the main window)
+            card_window.transient(payment_window)
+            card_window.grab_set()
 
             # Center the pop-up window on the screen
             x = payment_window.winfo_x() + (payment_window.winfo_width() // 2) - 200
@@ -525,7 +525,7 @@ def open_payment_page(selected_bookings, total_price):
                                       command=lambda: finalize_payment("Credit/Debit Card", card_window))
             submit_button.pack(pady=10)
 
-            return  # Exit the current function to wait for user input on the card window
+            return
 
 
         elif payment_type == "E-Wallet":
@@ -628,7 +628,7 @@ def open_payment_page(selected_bookings, total_price):
         c.drawString(120, height - 70, f"Payment ID: {payment_id}")
 
         # Location and dates
-        location = f"Location: {booking[13]}"  # Replace or add dynamic location if needed
+        location = f"Location: {booking[13]}"
         c.setFont("Helvetica", 12)
         c.drawString(30, height - 120, location)
         c.drawString(30, height - 140, f"Pickup Date: {booking[1]}")
@@ -743,10 +743,10 @@ def open_payment_page(selected_bookings, total_price):
             # Process each selected booking
             for booking in selected_bookings:
                 try:
-                    booking_id = booking[0]  # BookingID
-                    user_id = booking[11]  # UserID
-                    admin_id = booking[8]  # AdminID
-                    car_id = booking[7]  # CarID (added from booking fetch query)
+                    booking_id = booking[0]
+                    user_id = booking[11]
+                    admin_id = booking[8]
+                    car_id = booking[7]
                     date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
                     # Insert payment details into PaymentTable, including CarID
